@@ -53,7 +53,8 @@ class FileController extends Controller
     {
         $model = $this->findModel($id);
 
-        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('admin')) {
+        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('can_view_documents'))
+	{
             throw new ForbiddenHttpException;
         }
 
@@ -123,7 +124,7 @@ class FileController extends Controller
     {
         $model = $this->findModel($id);
 
-        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('admin'))
+        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('can_view_documents'))
             throw new ForbiddenHttpException;
 
         return $this->render('crop', ['model' => $model]);
@@ -137,7 +138,7 @@ class FileController extends Controller
     {
         $model = $this->findModel($id);
 
-        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('admin'))
+        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('can_view_documents'))
             throw new ForbiddenHttpException;
 
         if ($model->updateAttributes(['public' => 1]))
@@ -156,7 +157,7 @@ class FileController extends Controller
     {
         $model = $this->findModel($id);
 
-        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('admin'))
+        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('can_view_documents'))
             throw new ForbiddenHttpException;
 
         if ($model->updateAttributes(['public' => 0]))
@@ -177,7 +178,7 @@ class FileController extends Controller
         $model = $this->findModel($id);
 
         if (!$model->public)
-            if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('admin'))
+            if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('can_view_documents'))
                 throw new ForbiddenHttpException;
 
         header("Content-Type: $model->mimetype");
@@ -243,7 +244,7 @@ class FileController extends Controller
             $output = ['error' => Yii::t('files', 'Error while uploading files. Please contact the system administrator.')];
 
             if (YII_DEBUG)
-                $output['error'] .= error_get_last() . (isset($file) ? $file->getErrors() : '');
+                $output['error'] .= error_get_last() . (isset($file) ? print_r($file,true) : '');
 
             foreach ($paths as $file) {
                 unlink($file);
@@ -265,7 +266,7 @@ class FileController extends Controller
 
         Yii::$app->user->setReturnUrl(['//files/file/view', 'id' => $id]);
 
-        if (Yii::$app->user->id != $file->created_by && !Yii::$app->user->can('admin'))
+        if (Yii::$app->user->id != $file->created_by && !Yii::$app->user->can('can_view_documents'))
             throw new ForbiddenHttpException;
 
         return $this->render('view', [
@@ -283,7 +284,7 @@ class FileController extends Controller
     {
         $file = $this->findModel($id);
 
-        if (Yii::$app->user->id == $file->created_by || Yii::$app->user->can('admin'))
+        if (Yii::$app->user->id == $file->created_by || Yii::$app->user->can('can_view_documents'))
             $file->delete();
         else
             throw new ForbiddenHttpException;

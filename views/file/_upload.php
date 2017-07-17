@@ -12,7 +12,7 @@ $pluginOptions = ArrayHelper::merge($pluginOptions, [
     'uploadExtraData' => [
         'model' => $model::className(),
         'attribute' => isset($_POST['attribute']) ? $_POST['attribute'] : '',
-        'target_id' => method_exists($model, 'identifierAttribute') ? $model->{$model->identifierAttribute()} : $model->id,
+        'target_id' => method_exists($model, 'identifierAttribute') ? $model->{$model->identifierAttribute()} : $model->primaryKey,
         'target_url' => isset($target_url) ? $target_url : '',
     ],
 ]);

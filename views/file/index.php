@@ -35,7 +35,7 @@ $this->params['breadcrumbs'][] = $this->title;
                 'attribute' => 'target_id',
                 'value' => function ($data) {
                     if ($data->target) {
-                        $identifierAttribute = 'id';
+                        $identifierAttribute = 'primaryKey';
 
                         if (method_exists($data->target, 'identifierAttribute'))
                             $identifierAttribute = $data->target->identifierAttribute();
@@ -54,9 +54,9 @@ $this->params['breadcrumbs'][] = $this->title;
                 'format' => 'html',
                 'value' => function ($model) {
                     if ($model->public) {
-                        return '<span class="glyphicon glyphicon-folder-open" aria-hidden="true"></span> ' . Yii::t('files', 'File is public.') . '.<br />' . Html::a(Yii::t('files', 'Make protected.'), ['//files/file/protect', 'id' => $model->id], ['data-pjax' => '0']);
+                        return '<span class="glyphicon glyphicon-folder-open" aria-hidden="true"></span> ' . Yii::t('files', 'File is public.') . '.<br />' . Html::a(Yii::t('files', 'Make protected.'), ['//files/file/protect', 'id' => $model->primaryKey], ['data-pjax' => '0']);
                     } else {
-                        return '<span class="glyphicon glyphicon-folder-close" aria-hidden="true"></span> ' . Yii::t('files', 'File is protected.') . '.<br />' . Html::a(Yii::t('files', 'Make public.'), ['//files/file/publish', 'id' => $model->id], ['data-pjax' => '0']);
+                        return '<span class="glyphicon glyphicon-folder-close" aria-hidden="true"></span> ' . Yii::t('files', 'File is protected.') . '.<br />' . Html::a(Yii::t('files', 'Make public.'), ['//files/file/publish', 'id' => $model->primaryKey], ['data-pjax' => '0']);
                     }
                 }
             ],

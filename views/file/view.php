@@ -3,6 +3,7 @@
 use yii\helpers\Html;
 use yii\widgets\DetailView;
 
+
 /* @var $this yii\web\View */
 /* @var $model app\models\Sitecontent */
 
@@ -21,18 +22,18 @@ $this->params['breadcrumbs'][] = $this->title;
                 <?= $model->downloadLink(); ?>
 
                 <?php if($model->isImage()) {
-                    echo Html::a(Yii::t('files', 'Crop Image'), ['crop', 'id' => $model->id]);
+                    echo Html::a(Yii::t('files', 'Crop Image'), ['//files/file/crop', 'id' => $model->primaryKey]);
                 } ?>
 
                 <?php
                 if ($model->public) {
-                    echo Yii::t('files', 'File is public.') . Html::a(Yii::t('files', 'Make protected.'), ['//files/file/protect', 'id' => $model->id], []);
+                    echo Yii::t('files', 'File is public.') . Html::a(Yii::t('files', 'Make protected.'), ['//files/file/protect', 'id' => $model->primaryKey], []);
                 } else {
-                    echo Yii::t('files', 'File is protected.') . Html::a(Yii::t('files', 'Make public.'), ['//files/file/publish', 'id' => $model->id], []);
+                    echo Yii::t('files', 'File is protected.') . Html::a(Yii::t('files', 'Make public.'), ['//files/file/publish', 'id' => $model->primaryKey], []);
                 }
                 ?>
 
-                <?= Html::a(Yii::t('files', 'Remove file'), ['/files/file/delete', 'id' => $model->id],
+                <?= Html::a(Yii::t('files', 'Remove file'), ['//files/file/delete', 'id' => $model->primaryKey],
                     ['class' => 'btn btn-danger', 'data-confirm' => 'Are you sure?']);
 
                 ?>
@@ -46,7 +47,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         'format' => 'html',
                         'value' => function ($data) {
                             if ($data->target) {
-                                $identifierAttribute = 'id';
+                                $identifierAttribute = 'primaryKey';
 
                                 if (method_exists($data->target, 'identifierAttribute'))
                                     $identifierAttribute = $data->target->identifierAttribute();

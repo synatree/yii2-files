@@ -13,7 +13,7 @@ class HasFilesBehavior extends Behavior
      */
     public function getFiles()
     {
-        $identifierAttribute = 'id';
+        $identifierAttribute = 'primaryKey';
 
         if (method_exists($this->owner, 'identifierAttribute'))
             $identifierAttribute = $this->owner->identifierAttribute();
