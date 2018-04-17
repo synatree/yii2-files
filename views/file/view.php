@@ -1,65 +1,71 @@
 <?php
 
+use thyseus\files\models\File;
 use yii\helpers\Html;
+use yii\widgets\ActiveForm;
 use yii\widgets\DetailView;
+use kartik\select2\Select2;
 
 
 /* @var $this yii\web\View */
 /* @var $model app\models\Sitecontent */
 
 $this->title = $model->filename_user;
+$this->params['breadcrumbs'][] = ['label' => Yii::t('files', 'Files'), 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
+
+$owner = $model->created_by == Yii::$app->user->id;
 ?>
 <div class="file-view">
+    <div class="row">
+        <div class="col-md-12">
+            <?= Html::a(Yii::t('files', 'Back to file overview'), ['index']); ?>
+            <span class="pull-right"> <?= $model->downloadLink(); ?> </span>
+        </div>
+    </div>
+
+    <hr>
 
     <div class="row">
-        <div class="row-lg-12">
-            <h1><?= Html::encode($this->title) ?></h1>
-
-            <p>
-                <a href="" onclick="history.go(-1);"> <?= Yii::t('files', 'Back'); ?> </a>
-
-                <?= $model->downloadLink(); ?>
-
-                <?php if($model->isImage()) {
-                    echo Html::a(Yii::t('files', 'Crop Image'), ['//files/file/crop', 'id' => $model->primaryKey]);
-                } ?>
-
-                <?php
-                if ($model->public) {
-                    echo Yii::t('files', 'File is public.') . Html::a(Yii::t('files', 'Make protected.'), ['//files/file/protect', 'id' => $model->primaryKey], []);
-                } else {
-                    echo Yii::t('files', 'File is protected.') . Html::a(Yii::t('files', 'Make public.'), ['//files/file/publish', 'id' => $model->primaryKey], []);
-                }
-                ?>
-
-                <?= Html::a(Yii::t('files', 'Remove file'), ['//files/file/delete', 'id' => $model->primaryKey],
-                    ['class' => 'btn btn-danger', 'data-confirm' => 'Are you sure?']);
-
-                ?>
-            </p>
+        <div class="col-md-6">
             <?php
             echo DetailView::widget([
                 'model' => $model,
                 'attributes' => [
                     [
                         'label' => 'Target',
+                        'visible' => $model->target !== null,
                         'format' => 'html',
-                        'value' => function ($data) {
-                            if ($data->target) {
-                                $identifierAttribute = 'primaryKey';
+                        'value' => function ($model) {
+                            if ($model->target) {
+                                $caption = '';
 
-                                if (method_exists($data->target, 'identifierAttribute'))
-                                    $identifierAttribute = $data->target->identifierAttribute();
+                                if (method_exists($model->target, 'identifierAttribute')) {
+                                    $identifierAttribute = $model->target->identifierAttribute();
+                                    $caption = $model->target->$identifierAttribute;
+                                }
 
-                                return Html::a($data->target->$identifierAttribute, $data->target_url);
+                                if (method_exists($model, '__toString()')) {
+                                    $caption = $model->target->__toString();
+                                }
+
+                                return Html::a($caption, $model->target_url);
                             }
                         }
                     ],
-                    'created_at',
-                    'updated_at',
-                    'created_by',
-                    'updated_by',
+                    [
+                        'attribute' => 'created_at',
+                        'format' => 'datetime',
+                    ],
+                    [
+                        'attribute' => 'updated_at',
+                        'format' => 'datetime',
+                    ],
+                    [
+                        'attribute' => 'created_by',
+                        'value' => $model->owner->username,
+                    ],
+                    'mimetype',
                     'filename_user',
                     [
                         'attribute' => 'model',
@@ -74,20 +80,90 @@ $this->params['breadcrumbs'][] = $this->title;
                         'attribute' => 'public',
                         'value' => $model->public ? Yii::t('files', 'Yes') : Yii::t('files', 'No'),
                     ],
-                    'mimetype',
                     [
                         'format' => 'html',
                         'attribute' => 'target_url',
-                        'value' => Html::a($model->target_url, $model->target_url)
+                        'value' => $model->target_url ? Html::a($model->target_url, $model->target_url) : null,
+                    ],
+                    [
+                        'attribute' => 'tags',
+                        'value' => $model->getTagsFormatted(),
+                        'visible' => Yii::$app->getModule('files')->possibleTags,
+                    ],
+                    [
+                        'attribute' => 'checksum',
                     ]
                 ]
             ]);
             ?>
-
-            <?php if($model->isImage()): ?>
-                <img src="<?= $model->downloadUrl(); ?>" alt="image" />
+        </div>
+        <div class="col-md-6">
+            <?php if ($model->isImage()): ?>
+                <img src="<?= $model->downloadUrl(); ?>" alt="image"/>
+                <br>
+                <?php if ($owner) { ?>
+                    <?= Html::a(Yii::t('files', 'Crop Image'), ['crop', 'id' => $model->id]); ?>
+                <?php } ?>
             <?php endif ?>
 
+            <br>
+
+            <?php if ($owner) { ?>
+                <?php if ($model->public) { ?>
+                    <div class="alert alert-warning"><p> <?= Yii::t('files', 'File is public'); ?>. </p></div>
+
+                    <br>
+
+                    <?= Html::a(Yii::t('files', 'Make protected'), ['//files/file/protect', 'id' => $model->id], ['class' => 'btn btn-primary']); ?>
+
+                <?php } else { ?>
+                    <div class="alert alert-warning"><p><?= Yii::t('files', 'File is protected'); ?>.</p></div>
+
+                    <?= $this->render('_shared_with', ['model' => $model, 'users' => $users]); ?>
+
+                    <br>
+
+                    <?= Html::a(Yii::t('files', 'Make public'), ['//files/file/publish', 'id' => $model->id], [
+                            'data-confirm' => Yii::t('files', 'Are you sure to make this file available to the public?'),
+                            'class' => 'btn btn-primary']); ?>
+
+                <?php } ?>
+
+                <hr>
+
+                <?php if (Yii::$app->getModule('files')->possibleTags) { ?>
+
+                    <?php $form = ActiveForm::begin(['id' => 'file-tags-form']); ?>
+
+                    <?= $form->field($model, 'tags')->widget(Select2::class, [
+                        'data' => File::possibleTagsTranslated(),
+                        'options' => [
+                            'placeholder' => Yii::t('files', 'Select tags'),
+                        ],
+                        'pluginOptions' => [
+                            'multiple' => true,
+                            'disabled' => !$owner,
+                            'allowClear' => true,
+                        ],
+                    ]);
+                    ?>
+
+                    <?= Html::submitButton(Yii::t('files', 'Save tags'), ['class' => 'btn btn-primary']); ?>
+
+                    <?php ActiveForm::end(); ?>
+
+                <?php } ?>
+
+                <hr>
+
+                <?php if ($owner && $model->isDeleteable()) { ?>
+                    <?= Html::a(Yii::t('files', 'Remove file'), ['/files/file/delete', 'id' => $model->id],
+                        ['class' => 'btn btn-danger', 'data-confirm' => 'Are you sure?']);
+                    ?>
+                <?php } ?>
+
+            <?php } ?>
         </div>
     </div>
+</div>
 </div>

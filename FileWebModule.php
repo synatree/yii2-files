@@ -10,7 +10,7 @@ use yii\i18n\PhpMessageSource;
  */
 class FileWebModule extends \yii\base\Module
 {
-    public $version = '0.1.0-dev';
+    public $version = '0.5.0-dev';
 
     /**
      * @inheritdoc
@@ -23,11 +23,6 @@ class FileWebModule extends \yii\base\Module
      * @var string The class of the User Model inside the application this module is attached to
      */
     public $userModelClass = 'app\models\User';
-
-    /**
-     * @var boolean Should the file also be deleted physically on removal ?
-     */
-    public $deletePhysically = false;
 
     /**
      * @var string Url to upload files.
@@ -56,14 +51,65 @@ class FileWebModule extends \yii\base\Module
         'modal' => false,
     ];
 
+    /**
+     * @var string Callback that defines which users choosable to share files with.
+     *
+     * For example, to allow only username foo and bar, do this:
+     *
+     * 'shareableUsersCallback' => function ($users) {
+     *    return array_filter($users, function ($user) {
+     *      return !in_array($user->username, ['foo', 'bar']); // or !$user->isAdmin()
+     *    });
+     *  },
+     *
+     */
+    public $shareableUsersCallback = null;
+
+    /**
+     * @var bool|callable
+     * Set to true to globally allow the deletion of files by the user who owns the file.
+     * Set to false to globally disallow file deletion. Files can only be uploaded and never be removed.
+     * Set a callback function to check if this specific file is allowed to be deleted.
+     *
+     * Note that files first go into a trash bin and can be restored. To finally delete them, the
+     * user has to empty his trash bin manually.
+     *
+     * For example, to disallow the deletion of a specific tag:
+     *
+     * 'allowDeletion' => function($model) { return !in_array('not-deleteable', $model->tags); }
+     *
+     * You can specify a custom message why the file is not deleteable. Its only allowed of the return value is === true:
+     *
+     * 'allowDeletion' => function($model) { return time() > 618019215 ? 'File can not be deleted, Drachenlord is born' : true; }
+     */
+    public $allowDeletion = true;
+
+    /**
+     * @var array fill this array to let users tag their file with some of these options. For example:
+     *
+     * 'possibleTags' => [
+     *      'logo' => 'Logo',
+     *      'screenshot' => 'Screenshot',
+     * ],
+     * The key is stored in the database, the value is translated via Yii::t('app', as caption for the Tag.
+     */
+    public $possibleTags = [];
+
+    /**
+     * @var bool Set to true to skip the checksum integrity check for downloading files. Please note that this
+     * does severly impact the security because files can be changed after uploaded and can get malicious content.
+     */
+    public $skipChecksumIntegrity = false;
 
     /** @var array The rules to be used in URL management. */
     public $urlRules = [
-        'files/update/<id>' => 'files/files/update',
-        'files/delete/<id>' => 'files/files/delete',
-        'files/<id>' => 'files/files/view',
-        'files/index' => 'files/files/index',
-        'files/create' => 'files/files/create',
+        'files/trash-bin' => 'files/file/trash-bin',
+        'files/restore/<id>' => 'files/file/restore',
+        'files/update/<id>' => 'files/file/update',
+        'files/delete/<id>' => 'files/file/delete',
+        'files/<id>' => 'files/file/view',
+        'files/index' => 'files/file/index',
+        'files/create' => 'files/file/create',
     ];
 
     /**
@@ -77,7 +123,7 @@ class FileWebModule extends \yii\base\Module
 
         if (!isset(Yii::$app->get('i18n')->translations['files*'])) {
             Yii::$app->get('i18n')->translations['files*'] = [
-                'class' => PhpMessageSource::className(),
+                'class' => PhpMessageSource::class,
                 'basePath' => __DIR__ . '/messages',
                 'sourceLanguage' => 'en-US'
             ];
