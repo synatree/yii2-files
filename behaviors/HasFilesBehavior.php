@@ -21,6 +21,38 @@ class HasFilesBehavior extends Behavior
         return $this->owner->hasMany(File::class, ['target_id' => $identifierAttribute])->orderBy('position ASC');
     }
 
+    public function attachFile($fileOptions=
+    [
+        'content' => null,
+        'name' => null,
+        'path' => null,
+        'type' => null,
+        'target_url' => null,
+        'tags' => null,
+    ])
+    {
+
+
+        $file = Yii::createObject([
+            'class' => File::class,
+            'attributes' => [
+                'content' => $fileOptions['content'],
+                'filename_user' => $fileOptions['name'],
+                'created_by' => Yii::$app->user->id,
+                'filename_path' => $fileOptions['path'],
+                'mimetype' => $fileOptions['type'],
+                'model' => $this->owner::className(),
+                'target_id' => $this->owner->primaryKey,
+                'target_url' => $fileOptions['target_url'] ?: '',
+                'public' => 0,
+                'tags' => $fileOptions['tags'] ?: '',
+            ],
+        ]);
+
+        $success = $file->save();
+        return $success;
+    }
+
     /**
      * Attaches an relation 'filesPublic' to the owner model that retrieves all public files.
      *
