@@ -50,7 +50,7 @@ class HasFilesBehavior extends Behavior
             ],
         ]);
 
-        $success = $file->save();
+        $success = $file->save(false);
         return $success;
     }
 
