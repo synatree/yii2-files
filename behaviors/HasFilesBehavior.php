@@ -3,6 +3,7 @@ namespace thyseus\files\behaviors;
 
 use thyseus\files\models\File;
 use yii\base\Behavior;
+use Yii;
 
 class HasFilesBehavior extends Behavior
 {
