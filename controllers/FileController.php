@@ -373,7 +373,6 @@ class FileController extends Controller
                 }
 
                 $content = file_get_contents($file['tmp_name']);
-
                 if (move_uploaded_file($file['tmp_name'], $target)) {
                     $file = Yii::createObject([
                         'class' => File::class,
