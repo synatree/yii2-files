@@ -373,6 +373,7 @@ class FileController extends Controller
                 }
 
                 $content = file_get_contents($file['tmp_name']);
+		$os = filesize($file['tmp_name']);
                 if (move_uploaded_file($file['tmp_name'], $target)) {
                     $file = Yii::createObject([
                         'class' => File::class,
@@ -391,9 +392,13 @@ class FileController extends Controller
                     ]);
 
                     $success = $file->save();
-
+		    Yii::info("File Information", print_r([
+			'Original Size' =>  $os,
+			'Now' => filesize($target),
+		    ],true));
                     if ($file->isImage() && $this->module->crop_target_width && $this->module->crop_target_height) {
                         $file->crop();
+			Yii::info("Stupid ass");
                     }
 
                     $paths[] = $target;

@@ -19,7 +19,7 @@ class HasFilesBehavior extends Behavior
         if (method_exists($this->owner, 'identifierAttribute'))
             $identifierAttribute = $this->owner->identifierAttribute();
 
-        return $this->owner->hasMany(File::class, ['target_id' => $identifierAttribute])->orderBy('position ASC');
+        return $this->owner->hasMany(File::class, ['target_id' => $identifierAttribute])->andWhere(['status' => File::STATUS_NORMAL])->orderBy('position ASC');
     }
 
     public function attachFile($fileOptions=
