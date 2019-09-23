@@ -78,6 +78,12 @@ class File extends ActiveRecord
         return strpos($this->mimetype, 'image') !== false;
     }
 
+    public function inline()
+    {
+        $blob = file_get_contents($this->filename_path);
+        $blob = base64_encode($blob);
+        return "data:{$this->mimetype};base64,$blob";
+    }
 
     public function behaviors()
     {
