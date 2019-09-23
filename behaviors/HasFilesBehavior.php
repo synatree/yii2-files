@@ -2,8 +2,8 @@
 namespace thyseus\files\behaviors;
 
 use thyseus\files\models\File;
-use yii\base\Behavior;
 use Yii;
+use yii\base\Behavior;
 
 class HasFilesBehavior extends Behavior
 {
@@ -16,23 +16,23 @@ class HasFilesBehavior extends Behavior
     {
         $identifierAttribute = 'primaryKey';
 
-        if (method_exists($this->owner, 'identifierAttribute'))
+        if (method_exists($this->owner, 'identifierAttribute')) {
             $identifierAttribute = $this->owner->identifierAttribute();
+        }
 
         return $this->owner->hasMany(File::class, ['target_id' => $identifierAttribute])->andWhere(['status' => File::STATUS_NORMAL])->orderBy('position ASC');
     }
 
-    public function attachFile($fileOptions=
-    [
-        'content' => null,
-        'name' => null,
-        'path' => null,
-        'type' => null,
-        'target_url' => null,
-        'tags' => null,
-    ])
-    {
-
+    public function attachFile($fileOptions =
+        [
+            'content' => null,
+            'name' => null,
+            'path' => null,
+            'type' => null,
+            'target_url' => null,
+            'tags' => null,
+            'status' => 0,
+        ]) {
 
         $file = Yii::createObject([
             'class' => File::class,
@@ -47,7 +47,7 @@ class HasFilesBehavior extends Behavior
                 'target_url' => $fileOptions['target_url'] ?: '',
                 'public' => 0,
                 'tags' => $fileOptions['tags'] ?: '',
-                'status' => 0,
+                'status' => $fileOptions['status'] ?: 0,
             ],
         ]);
 
@@ -64,8 +64,9 @@ class HasFilesBehavior extends Behavior
     {
         $identifierAttribute = 'id';
 
-        if (method_exists($this->owner, 'identifierAttribute'))
+        if (method_exists($this->owner, 'identifierAttribute')) {
             $identifierAttribute = $this->owner->identifierAttribute();
+        }
 
         return $this->owner->hasMany(File::class,
             ['target_id' => $identifierAttribute])
@@ -82,8 +83,9 @@ class HasFilesBehavior extends Behavior
     {
         $identifierAttribute = 'id';
 
-        if (method_exists($this->owner, 'identifierAttribute'))
+        if (method_exists($this->owner, 'identifierAttribute')) {
             $identifierAttribute = $this->owner->identifierAttribute();
+        }
 
         return $this->owner->hasMany(File::class,
             ['target_id' => $identifierAttribute])
@@ -100,8 +102,9 @@ class HasFilesBehavior extends Behavior
     {
         $identifierAttribute = 'id';
 
-        if (method_exists($this->owner, 'identifierAttribute'))
+        if (method_exists($this->owner, 'identifierAttribute')) {
             $identifierAttribute = $this->owner->identifierAttribute();
+        }
 
         return $this->owner
             ->hasMany(File::class, ['target_id' => $identifierAttribute])
@@ -119,12 +122,13 @@ class HasFilesBehavior extends Behavior
     {
         $identifierAttribute = 'id';
 
-        if (method_exists($this->owner, 'identifierAttribute'))
+        if (method_exists($this->owner, 'identifierAttribute')) {
             $identifierAttribute = $this->owner->identifierAttribute();
+        }
 
         return $this->owner
             ->hasMany(File::class, ['target_id' => $identifierAttribute])
-            ->andWhere(['like', 'files.tags' , $tag])
+            ->andWhere(['like', 'files.tags', $tag])
             ->andWhere(['status' => File::STATUS_NORMAL])
             ->orderBy('position ASC')
             ->all();
