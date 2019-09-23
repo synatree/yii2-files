@@ -47,6 +47,7 @@ class HasFilesBehavior extends Behavior
                 'target_url' => $fileOptions['target_url'] ?: '',
                 'public' => 0,
                 'tags' => $fileOptions['tags'] ?: '',
+                'status' => 0,
             ],
         ]);
 
