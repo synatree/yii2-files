@@ -31,7 +31,6 @@ class HasFilesBehavior extends Behavior
             'type' => null,
             'target_url' => null,
             'tags' => null,
-            'status' => 0,
         ]) {
 
         $file = Yii::createObject([
@@ -47,11 +46,11 @@ class HasFilesBehavior extends Behavior
                 'target_url' => $fileOptions['target_url'] ?: '',
                 'public' => 0,
                 'tags' => $fileOptions['tags'] ?: '',
-                'status' => $fileOptions['status'] ?: 0,
+                'status' => 0,
             ],
         ]);
 
-        $success = $file->save(false);
+        $success = $file->save();
         return $success;
     }
 

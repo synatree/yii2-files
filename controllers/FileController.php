@@ -298,11 +298,14 @@ class FileController extends Controller
         }
 
         $model->updateCounters(['download_count' => 1]);
-
+        $options = [
+            'mimeType' => $model->mimetype,
+            'inline' => $model->isImage()
+        ];
         if ($raw) {
-            return Yii::$app->response->sendContentAsFile(file_get_contents($model->filename_path), $model->filename_user);
+            return Yii::$app->response->sendContentAsFile(file_get_contents($model->filename_path), $model->filename_user, $options);
         } else {
-            return Yii::$app->response->sendFile($model->filename_path, $model->filename_user);
+            return Yii::$app->response->sendFile($model->filename_path, $model->filename_user, $options);
         }
     }
 
@@ -398,7 +401,7 @@ class FileController extends Controller
 		    ],true));
                     if ($file->isImage() && $this->module->crop_target_width && $this->module->crop_target_height) {
                         $file->crop();
-			Yii::info("Stupid ass");
+			            //Yii::info("Stupid ass");
                     }
 
                     $paths[] = $target;
