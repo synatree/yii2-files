@@ -12,37 +12,43 @@ class HasFilesBehavior extends Behavior
      *
      * @return yii\db\ActiveQuery
      */
+    private $_attr;
+    public function getIdentifierAttribute()
+    {
+        if (! $this->_attr) {
+            if (method_exists($this->owner, 'identifierAttribute')) {
+                $this->_attr = $this->owner->identifierAttribute();
+
+            }
+            else
+            {
+                $cls = get_class($this->owner);
+                $schema = call_user_func([cls, 'getTableSchema']);
+                $this->_attr = $schema->primaryKeys[0];
+            }
+            
+        }
+        return $this->_attr;
+    }
     public function getFiles()
     {
-        $identifierAttribute = 'primaryKey';
-
-        if (method_exists($this->owner, 'identifierAttribute')) {
-            $identifierAttribute = $this->owner->identifierAttribute();
-        }
+        $identifierAttribute = $this->getIdentifierAttribute();
 
         return $this->owner->hasMany(File::class, ['target_id' => $identifierAttribute])->andWhere(['status' => File::STATUS_NORMAL])->orderBy('position ASC');
     }
 
-    public function attachFile($fileOptions =
-        [
-            'content' => null,
-            'name' => null,
-            'path' => null,
-            'type' => null,
-            'target_url' => null,
-            'tags' => null,
-        ]) {
-
+    public function attachFile($fileOptions = []) {
+        $attr = $this->getIdentifierAttribute();
         $file = Yii::createObject([
             'class' => File::class,
             'attributes' => [
-                'content' => $fileOptions['content'],
-                'filename_user' => $fileOptions['name'],
-                'created_by' => Yii::$app->user->id,
-                'filename_path' => $fileOptions['path'],
-                'mimetype' => $fileOptions['type'],
+                'content' => $fileOptions['content'] ?? null,
+                'filename_user' => $fileOptions['name'] ?? null,
+                'created_by' => Yii::$app->user->id ?? null,
+                'filename_path' => $fileOptions['path'] ?? null,
+                'mimetype' => $fileOptions['type'] ?? null,
                 'model' => $this->owner::className(),
-                'target_id' => $this->owner->primaryKey,
+                'target_id' => $this->owner->$attr,
                 'target_url' => $fileOptions['target_url'] ?: '',
                 'public' => 0,
                 'tags' => $fileOptions['tags'] ?: '',
@@ -61,11 +67,7 @@ class HasFilesBehavior extends Behavior
      */
     public function getFilesPublic()
     {
-        $identifierAttribute = 'id';
-
-        if (method_exists($this->owner, 'identifierAttribute')) {
-            $identifierAttribute = $this->owner->identifierAttribute();
-        }
+        $identifierAttribute = $this->getIdentifierAttribute();
 
         return $this->owner->hasMany(File::class,
             ['target_id' => $identifierAttribute])
@@ -80,11 +82,7 @@ class HasFilesBehavior extends Behavior
      */
     public function getFilesProtected()
     {
-        $identifierAttribute = 'id';
-
-        if (method_exists($this->owner, 'identifierAttribute')) {
-            $identifierAttribute = $this->owner->identifierAttribute();
-        }
+        $identifierAttribute = $this->getIdentifierAttribute();
 
         return $this->owner->hasMany(File::class,
             ['target_id' => $identifierAttribute])
@@ -99,11 +97,7 @@ class HasFilesBehavior extends Behavior
      */
     public function filesFromUser($id)
     {
-        $identifierAttribute = 'id';
-
-        if (method_exists($this->owner, 'identifierAttribute')) {
-            $identifierAttribute = $this->owner->identifierAttribute();
-        }
+        $identifierAttribute = $this->getIdentifierAttribute();
 
         return $this->owner
             ->hasMany(File::class, ['target_id' => $identifierAttribute])
@@ -119,11 +113,7 @@ class HasFilesBehavior extends Behavior
      */
     public function filesWithTag($tag)
     {
-        $identifierAttribute = 'id';
-
-        if (method_exists($this->owner, 'identifierAttribute')) {
-            $identifierAttribute = $this->owner->identifierAttribute();
-        }
+        $identifierAttribute = $this->getIdentifierAttribute();
 
         return $this->owner
             ->hasMany(File::class, ['target_id' => $identifierAttribute])
