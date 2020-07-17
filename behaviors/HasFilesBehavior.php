@@ -23,7 +23,7 @@ class HasFilesBehavior extends Behavior
             else
             {
                 $cls = get_class($this->owner);
-                $schema = call_user_func([cls, 'getTableSchema']);
+                $schema = call_user_func([$cls, 'getTableSchema']);
                 $this->_attr = $schema->primaryKeys[0];
             }
             
