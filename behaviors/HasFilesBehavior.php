@@ -56,7 +56,10 @@ class HasFilesBehavior extends Behavior
             ],
         ]);
 
-        $success = $file->save();
+        if(!($success = $file->save()))
+        {
+            Yii::error( $file->getErrors() );
+        }
         return $success;
     }
 
