@@ -304,6 +304,18 @@ class File extends ActiveRecord
             $this->tags = implode(', ', $this->tags);
         }
 
+        if( $this->content && !$this->filename_path)
+        {
+            // we don't' have this file in our directory yet
+            $parts = explode('.', basename($this->filename_user));
+            $ext = $parts[-1];
+            $name = implode(".", array_slice($parts,0,-1));
+            $uniq = uniqid($name."-");
+            $target = Yii::$app->getModule('files')->uploadPath . "/{$uniq}.{$ext}";
+            file_put_contents($target,$this->content);
+            $this->filename_path = $target;
+        }
+
     }
 
     /**
