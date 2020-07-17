@@ -49,9 +49,9 @@ class HasFilesBehavior extends Behavior
                 'mimetype' => $fileOptions['type'] ?? null,
                 'model' => $this->owner::className(),
                 'target_id' => $this->owner->$attr,
-                'target_url' => $fileOptions['target_url'] ?: '',
+                'target_url' => $fileOptions['target_url']??'',
                 'public' => 0,
-                'tags' => $fileOptions['tags'] ?: '',
+                'tags' => $fileOptions['tags']?? '',
                 'status' => 0,
             ],
         ]);
