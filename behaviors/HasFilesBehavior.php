@@ -48,7 +48,7 @@ class HasFilesBehavior extends Behavior
                 'filename_path' => $fileOptions['path'] ?? null,
                 'mimetype' => $fileOptions['type'] ?? null,
                 'model' => $this->owner::className(),
-                'target_id' => $this->owner->$attr,
+                'target_id' => (string) $this->owner->$attr,
                 'target_url' => $fileOptions['target_url']??'',
                 'public' => 0,
                 'tags' => $fileOptions['tags']?? '',
@@ -59,8 +59,9 @@ class HasFilesBehavior extends Behavior
         if(!($success = $file->save()))
         {
             Yii::error( $file->getErrors() );
+            return null;
         }
-        return $success;
+        return $file;
     }
 
     /**
