@@ -23,8 +23,8 @@ class HasFilesBehavior extends Behavior
             else
             {
                 $cls = get_class($this->owner);
-                $schema = call_user_func([cls, 'getTableSchema']);
-                $this->_attr = $schema->primaryKeys[0];
+                $schema = call_user_func([$cls, 'getTableSchema']);
+                $this->_attr = $schema->primaryKey[0];
             }
             
         }
@@ -48,16 +48,20 @@ class HasFilesBehavior extends Behavior
                 'filename_path' => $fileOptions['path'] ?? null,
                 'mimetype' => $fileOptions['type'] ?? null,
                 'model' => $this->owner::className(),
-                'target_id' => $this->owner->$attr,
-                'target_url' => $fileOptions['target_url'] ?: '',
+                'target_id' => (string) $this->owner->$attr,
+                'target_url' => $fileOptions['target_url']??'',
                 'public' => 0,
-                'tags' => $fileOptions['tags'] ?: '',
+                'tags' => $fileOptions['tags']?? '',
                 'status' => 0,
             ],
         ]);
 
-        $success = $file->save();
-        return $success;
+        if(!($success = $file->save()))
+        {
+            Yii::error( $file->getErrors() );
+            return null;
+        }
+        return $file;
     }
 
     /**

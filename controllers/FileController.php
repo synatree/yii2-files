@@ -327,7 +327,7 @@ class FileController extends Controller
             return true;
         }
 
-        if (Yii::$app->user->can('admin')) {
+        if (Yii::$app->user->can('can_view_all_attachments')) {
             return true;
         }
 
