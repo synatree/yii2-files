@@ -200,7 +200,7 @@ class FileController extends Controller
         $this->trigger(self::EVENT_BEFORE_RESTORE);
 
         $model = $this->findModel($id);
-        $permission = Yii::$app->getModule('files')->canRestprePermission ?? 'admin';
+        $permission = Yii::$app->getModule('files')->canRestorePermission ?? 'admin';
         
         if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can($permission)) {
             throw new ForbiddenHttpException;
