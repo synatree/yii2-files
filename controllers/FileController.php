@@ -9,16 +9,13 @@ use thyseus\files\FileWebModule;
 use thyseus\files\models\File;
 use thyseus\files\models\FileSearch;
 use Yii;
-use yii\base\InvalidParamException;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\helpers\ArrayHelper;
-use yii\validators\FileValidator;
 use yii\web\BadRequestHttpException;
 use yii\web\Controller;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
-use yii\web\UploadedFile;
 
 /**
  * FileController implements all actions for the yii2-files module.
@@ -66,7 +63,7 @@ class FileController extends Controller
                         'actions' => ['index', 'view', 'delete', 'upload', 'upload-raw',
                             'download', 'protect', 'publish', 'crop', 'move', 'share-with-user',
                             'trash-bin', 'restore',
-                            ],
+                        ],
                         'roles' => ['@'],
                     ],
                 ],
@@ -93,9 +90,8 @@ class FileController extends Controller
     public function actionUploadRaw($id)
     {
         $model = $this->findModel($id);
-
-        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('can_view_documents'))
-	{
+        $permission = Yii::$app->getModule('files')->canViewPermission ?? 'can_view_documents';
+        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can($permission)) {
             throw new ForbiddenHttpException;
         }
 
@@ -185,8 +181,8 @@ class FileController extends Controller
         $this->trigger(self::EVENT_BEFORE_CROP);
 
         $model = $this->findModel($id);
-
-        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('admin')) {
+        $permission = Yii::$app->getModule('files')->canCropPermission ?? 'admin';
+        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can($permission)) {
             throw new ForbiddenHttpException;
         }
 
@@ -204,8 +200,9 @@ class FileController extends Controller
         $this->trigger(self::EVENT_BEFORE_RESTORE);
 
         $model = $this->findModel($id);
-
-        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('admin')) {
+        $permission = Yii::$app->getModule('files')->canRestprePermission ?? 'admin';
+        
+        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can($permission)) {
             throw new ForbiddenHttpException;
         }
 
@@ -231,8 +228,8 @@ class FileController extends Controller
         $this->trigger(self::EVENT_BEFORE_PUBLISH);
 
         $model = $this->findModel($id);
-
-        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('admin')) {
+        $permission = Yii::$app->getModule('files')->canPublishPermission ?? 'admin';
+        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can($permission)) {
             throw new ForbiddenHttpException;
         }
 
@@ -258,8 +255,8 @@ class FileController extends Controller
         $this->trigger(self::EVENT_BEFORE_PROTECT);
 
         $model = $this->findModel($id);
-
-        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can('admin')) {
+        $permission = Yii::$app->getModule('files')->canProtectPermission ?? 'admin';
+        if (Yii::$app->user->id != $model->created_by && !Yii::$app->user->can($permission)) {
             throw new ForbiddenHttpException;
         }
 
@@ -300,7 +297,7 @@ class FileController extends Controller
         $model->updateCounters(['download_count' => 1]);
         $options = [
             'mimeType' => $model->mimetype,
-            'inline' => $model->isImage()
+            'inline' => $model->isImage(),
         ];
         if ($raw) {
             return Yii::$app->response->sendContentAsFile(file_get_contents($model->filename_path), $model->filename_user, $options);
@@ -326,8 +323,8 @@ class FileController extends Controller
         if ($model->created_by == Yii::$app->user->id) {
             return true;
         }
-
-        if (Yii::$app->user->can('admin')) {
+        $permission = Yii::$app->getModule('files')->canAccessPermission ?? 'admin';
+        if (Yii::$app->user->can($permission)) {
             return true;
         }
 
@@ -376,7 +373,7 @@ class FileController extends Controller
                 }
 
                 $content = file_get_contents($file['tmp_name']);
-		$os = filesize($file['tmp_name']);
+                $os = filesize($file['tmp_name']);
                 if (move_uploaded_file($file['tmp_name'], $target)) {
                     $file = Yii::createObject([
                         'class' => File::class,
@@ -395,13 +392,13 @@ class FileController extends Controller
                     ]);
 
                     $success = $file->save();
-		    Yii::info("File Information", print_r([
-			'Original Size' =>  $os,
-			'Now' => filesize($target),
-		    ],true));
+                    Yii::info("File Information", print_r([
+                        'Original Size' => $os,
+                        'Now' => filesize($target),
+                    ], true));
                     if ($file->isImage() && $this->module->crop_target_width && $this->module->crop_target_height) {
                         $file->crop();
-			            //Yii::info("Stupid ass");
+                        //Yii::info("Stupid ass");
                     }
 
                     $paths[] = $target;
@@ -471,7 +468,8 @@ class FileController extends Controller
      * Which users should be able to be choosen when selecting files to share with.
      * @see FileWebModule shareableUsersCallback
      */
-    public function determineShareableUsers() {
+    public function determineShareableUsers()
+    {
         if (is_callable(Yii::$app->getModule('files')->shareableUsersCallback)) {
             return call_user_func(Yii::$app->getModule('files')->shareableUsersCallback);
         } else {
@@ -498,8 +496,8 @@ class FileController extends Controller
         $post = Yii::$app->request->post();
 
         $file = $this->findModel($file_id);
-
-        if (Yii::$app->user->id != $file->created_by && !Yii::$app->user->can('admin')) {
+        $permission = Yii::$app->getModule('files')->canSharePermission ?? 'admin';
+        if (Yii::$app->user->id != $file->created_by && !Yii::$app->user->can($permission)) {
             throw new ForbiddenHttpException;
         }
 
@@ -518,8 +516,8 @@ class FileController extends Controller
 
             Yii::$app->getSession()->setFlash('success',
                 Yii::t('files', 'File has been shared with {username}.', [
-                'username' => $username,
-            ]));
+                    'username' => $username,
+                ]));
         } else {
             $file->removeShareWith($username);
 
@@ -578,8 +576,8 @@ class FileController extends Controller
                 throw new ForbiddenHttpException(Yii::t('files', $allowDeletionResult));
             }
         }
-
-        if (Yii::$app->user->id == $file->created_by || Yii::$app->user->can('admin')) {
+        $permission = Yii::$app->getModule('files')->canDeletePermission ?? 'admin';
+        if (Yii::$app->user->id == $file->created_by || Yii::$app->user->can($permission)) {
             $file->delete();
             $this->trigger(self::EVENT_AFTER_DELETE);
         } else {
