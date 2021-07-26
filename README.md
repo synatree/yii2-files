@@ -63,6 +63,14 @@ Add following lines to your main configuration file:
 'modules' => [
     'files' => [
         'class' => 'thyseus\files\FileWebModule',
+        'canViewPermission' => 'can_view_all_attachments',
+        'canCropPermission' => 'can_crop_images',
+        'canRestorePermission' => 'can_restore_files',
+        'canPublishPermission' => 'can_publish_files',
+        'canProtectPermission' => 'can_protect_files',
+        'canAccessPermission' => 'can_view_all_attachments',
+        'canSharePermission' => 'can_share_files',
+        'canDeletePermission' => 'can_delete_files',
     ],
 ],
 ```
