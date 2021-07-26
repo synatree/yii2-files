@@ -24,7 +24,8 @@
         "yiisoft/yii2-imagine": "*",
         "kartik-v/yii2-widget-fileinput": "*",
         "kartik-v/yii2-widget-select2": "*",
-        "demi/cropper": "~1.0"
+        "demi/cropper": "~1.0",
+        "jculpitt/vips": "^1.0.8"
     },
     "autoload": {
         "psr-4": {

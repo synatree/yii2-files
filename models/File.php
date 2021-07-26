@@ -12,6 +12,7 @@ use yii\db\ActiveRecord;
 use yii\helpers\FileHelper;
 use yii\helpers\Html;
 use yii\helpers\Url;
+use Jcupitt\Vips\Image;
 
 /**
  * This is the model class for table "file".
@@ -78,11 +79,23 @@ class File extends ActiveRecord
         return strpos($this->mimetype, 'image') !== false;
     }
 
-    public function inline()
+    public function inline($w=null)
     {
-        $blob = file_get_contents($this->filename_path);
-        $blob = base64_encode($blob);
-        return "data:{$this->mimetype};base64,$blob";
+        if($this->isImage())
+        {
+            $thumb = Image::thumbnail($this->filename_path, $w ?? 480);
+            $blob = $thumb->writeToBuffer('.jpg');
+            $mime = 'image/jpg';
+        }
+        else
+        {
+            $blob = file_get_contents($this->filename_path);
+            $mime = $this->mimetype;
+            
+        }
+        $blob = base64_encode($blob);    
+        
+        return "data:{$mime};base64,$blob";
     }
 
     public function behaviors()
