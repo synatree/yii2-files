@@ -28,6 +28,14 @@ class FileWebModule extends \yii\base\Module
      * @var string Url to upload files.
      */
     public $uploadUrl = ['/files/file/upload'];
+    public $canViewPermission;
+    public $canCropPermission;
+    public $canRestorePermission;
+    public $canPublishPermission;
+    public $canProtectPermission;
+    public $canAccessPermission;
+    public $canSharePermission;
+    public $canDeletePermission;
 
     /**
      * @var string Physical directory where the upload files should be saved. Make sure the folder exists.
