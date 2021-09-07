@@ -1,7 +1,7 @@
 <?php
 
 use thyseus\files\models\FileSearch;
-use yii\grid\GridView;
+use kartik\grid\GridView;
 use yii\helpers\Html;
 
 /* @var $this yii\web\View */
@@ -81,14 +81,14 @@ $this->params['breadcrumbs'][] = $this->title;
                     $owner = $model->created_by == Yii::$app->user->id;
                     if ($owner) {
                         if ($model->public) {
-                            return '<span class="glyphicon glyphicon-folder-open" aria-hidden="true"></span> '
+                            return '<span class="fa fa-folder-open" aria-hidden="true"></span> '
                                 . Yii::t('files', 'File is public')
                                 . '.<br />'
                                 . Html::a(
                                     Yii::t('files', 'Make protected'),
                                     ['//files/file/protect', 'id' => $model->id]);
                         } else {
-                            return '<span class="glyphicon glyphicon-folder-close" aria-hidden="true"></span> '
+                            return '<span class="fa fa-folder-close" aria-hidden="true"></span> '
                                 . Yii::t('files', 'File is protected')
                                 . '.<br />'
                                 . Html::a(
@@ -110,9 +110,9 @@ $this->params['breadcrumbs'][] = $this->title;
                     $owner = $model->created_by == Yii::$app->user->id;
                     $str = $model->position . '<br>';
                     if ($owner) {
-                        $str .= Html::a('<span class="glyphicon glyphicon-arrow-up" aria-hidden="true"></span>',
+                        $str .= Html::a('<span class="fa fa-arrow-up" aria-hidden="true"></span>',
                                 ['move', 'id' => $model->id, 'dir' => 'up']) . '&nbsp;';
-                        $str .= Html::a('<span class="glyphicon glyphicon-arrow-down" aria-hidden="true"></span>',
+                        $str .= Html::a('<span class="fa fa-arrow-down" aria-hidden="true"></span>',
                                 ['move', 'id' => $model->id, 'dir' => 'down']) . '&nbsp;';
                     }
                     return $str;
@@ -133,17 +133,17 @@ $this->params['breadcrumbs'][] = $this->title;
                     // The current implementation of the cropper does only work on Google Chrome (Webkit) based browsers
                     if ($model->isImage() && stripos($_SERVER['HTTP_USER_AGENT'], 'chrome') !== FALSE) {
                         $actions .= '<nobr>' . Html::a(
-                                '<span class="glyphicon glyphicon-scissors" aria-hidden="true"></span> ' . Yii::t('files', 'Crop Image'),
+                                '<span class="fa fa-scissors" aria-hidden="true"></span> ' . Yii::t('files', 'Crop Image'),
                                 ['//files/file/crop', 'id' => $model->slug]) . '</nobr><br>';
                     }
 
                     $actions .= $model->downloadLink() . '<br>';
                     $actions .= '<nobr>' . Html::a(
-                            '<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span> ' . Yii::t('files', 'Properties'),
+                            '<span class="fa fa-wrench" aria-hidden="true"></span> ' . Yii::t('files', 'Properties'),
                             ['//files/file/view', 'id' => $model->slug]) . '</nobr><br>';
                     if ($owner && $model->isDeleteable()) {
                         $actions .= '<nobr>' . Html::a(
-                                '<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> ' . Yii::t('files', 'Delete File'),
+                                '<span class="fa fa-remove" aria-hidden="true"></span> ' . Yii::t('files', 'Delete File'),
                                 ['//files/file/delete', 'id' => $model->slug], [
                                 'data-method' => 'POST',
                                 'data-confirm' => Yii::t('files', 'Are you Sure?'),

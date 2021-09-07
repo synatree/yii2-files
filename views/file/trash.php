@@ -2,7 +2,7 @@
 
 use thyseus\files\models\File;
 use thyseus\files\models\FileSearch;
-use yii\grid\GridView;
+use kartik\grid\GridView;
 use yii\helpers\Html;
 
 /* @var $this yii\web\View */

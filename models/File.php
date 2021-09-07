@@ -62,7 +62,7 @@ class File extends ActiveRecord
     public function downloadLink($raw = false, $caption = false)
     {
         if (!$caption) {
-            $innerHtml = '<span class="glyphicon glyphicon-download" aria-hidden="true"></span> ' . Yii::t('app', 'Download');
+            $innerHtml = '<span class="fa fa-download" aria-hidden="true"></span> ' . Yii::t('app', 'Download');
         } else {
             $innerHtml = $caption;
         }

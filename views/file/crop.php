@@ -53,31 +53,31 @@ $crop_target_height = Yii::$app->getModule('files')->crop_target_height;
                     <hr>
 
                     <a class="btn btn-primary btn-rotate-left" href="#" title="Rotate Left">
-                        <span class="glyphicon glyphicon-chevron-left"></span>
+                        <span class="fa fa-chevron-left"></span>
                     </a>
 
                     <a class="btn btn-primary btn-rotate-right" href="#" title="Rotate Right">
-                        <span class="glyphicon glyphicon-chevron-right"></span>
+                        <span class="fa fa-chevron-right"></span>
                     </a>
 
                     <a class="btn btn-primary btn-zoom-out" href="#" title="Zoom Out">
-                        <span class="glyphicon glyphicon-minus"></span>
+                        <span class="fa fa-minus"></span>
                     </a>
 
                     <a class="btn btn-primary btn-zoom-in" href="#" title="Zoom In">
-                        <span class="glyphicon glyphicon-plus"></span>
+                        <span class="fa fa-plus"></span>
                     </a>
 
                     <a class="btn btn-primary btn-zoom-reset" href="#" title="Reset">
-                        <span class="glyphicon glyphicon-off"></span>
+                        <span class="fa fa-off"></span>
                     </a>
 
                     <a class="btn btn-primary btn-flip-horizontal" href="#" title="Flip horizontal">
-                        <span class="glyphicon glyphicon-resize-horizontal"></span>
+                        <span class="fa fa-resize-horizontal"></span>
                     </a>
 
                     <a class="btn btn-primary btn-flip-vertical" href="#" title="Flip Vertical">
-                        <span class="glyphicon glyphicon-resize-vertical"></span>
+                        <span class="fa fa-resize-vertical"></span>
                     </a>
 
                     <hr>
