@@ -79,13 +79,16 @@ class File extends ActiveRecord
         return strpos($this->mimetype, 'image') !== false;
     }
 
-    public function inline($w=null)
+    public function inline($w=null, $h=null, $format='.jpg', $mime='image/jpeg')
     {
         if($this->isImage())
         {
-            $thumb = Image::thumbnail($this->filename_path, $w ?? 480);
-            $blob = $thumb->writeToBuffer('.jpg');
-            $mime = 'image/jpg';
+            $thumb = Image::thumbnail(
+                        $this->filename_path, 
+                        $w ?? 480, 
+                        $h ? ['height' => $h] : null
+            );
+            $blob = $thumb->writeToBuffer($format);
         }
         else
         {
