@@ -2,7 +2,7 @@
 
 use thyseus\files\models\File;
 use yii\helpers\Html;
-use yii\bootstrap5\ActiveForm;
+use yii\bootstrap\ActiveForm;
 use yii\widgets\DetailView;
 use kartik\select2\Select2;
 
