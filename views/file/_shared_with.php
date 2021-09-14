@@ -1,7 +1,7 @@
 <?php
 
 use app\models\User;
-use yii\bootstrap\ActiveForm;
+use yii\bootstrap5\ActiveForm;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 
