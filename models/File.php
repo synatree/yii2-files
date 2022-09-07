@@ -385,8 +385,19 @@ class File extends ActiveRecord
         if (method_exists($target, 'identifierAttribute')) {
             $identifier_attribute = $target->identifierAttribute();
         }
+        if(method_exists($target, 'primaryKey'))
+        {
+            $identifier_attribute = current($target->primaryKey());
+        }
 
         return $this->hasOne($targetClass::className(), [$identifier_attribute => 'target_id']);
+    }
+
+    public function reassign($model)
+    {
+        $this->model = get_class($model);
+        $this->target_id = $model->primaryKey;
+        $this->save();
     }
 
     public function isDeleteable()

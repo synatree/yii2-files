@@ -126,4 +126,11 @@ class HasFilesBehavior extends Behavior
             ->orderBy('position ASC')
             ->all();
     }
+
+    public function reassignAll($destination){
+        foreach($this->owner->files as $fileModel)
+        {
+            $fileModel->reassign($destination);
+        }
+    }
 }
