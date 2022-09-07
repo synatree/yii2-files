@@ -127,7 +127,7 @@ class HasFilesBehavior extends Behavior
             ->all();
     }
 
-    public function reassignAll($destination){
+    public function reassignAllFiles($destination){
         foreach($this->owner->files as $fileModel)
         {
             $fileModel->reassign($destination);
