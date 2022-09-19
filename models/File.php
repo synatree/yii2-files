@@ -74,6 +74,10 @@ class File extends ActiveRecord
         return Url::to(['//files/file/download', 'id' => $this->slug, 'raw' => $raw], true);
     }
 
+    public function deleteUrl(){
+        return Url::to(['//files/file/delete', 'id' => $this->slug], true);
+    }
+
     public function isImage()
     {
         return strpos($this->mimetype, 'image') !== false;
