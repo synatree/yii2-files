@@ -50,7 +50,7 @@ class HasFilesBehavior extends Behavior
                 'model' => $this->owner::className(),
                 'target_id' => (string) $this->owner->$attr,
                 'target_url' => $fileOptions['target_url']??'',
-                'public' => 0,
+                'public' => $fileOptions['public'] ?? 0,
                 'tags' => $fileOptions['tags']?? '',
                 'status' => 0,
             ],
