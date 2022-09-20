@@ -277,7 +277,7 @@ class FileController extends Controller
      * Increments the download_count of the requested file by one, if valid.
      * @return mixed
      */
-    public function actionDownload(string $id, bool $raw = false)
+    public function actionDownload(string $id, bool $raw = false, bool $inline = false)
     {
         $model = $this->findModel($id);
 
@@ -297,7 +297,7 @@ class FileController extends Controller
         $model->updateCounters(['download_count' => 1]);
         $options = [
             'mimeType' => $model->mimetype,
-            'inline' => $model->isImage(),
+            'inline' => $model->isImage() || $inline,
         ];
         if ($raw) {
             return Yii::$app->response->sendContentAsFile(file_get_contents($model->filename_path), $model->filename_user, $options);
