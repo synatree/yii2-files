@@ -74,6 +74,10 @@ class File extends ActiveRecord
         return Url::to(['//files/file/download', 'id' => $this->slug, 'raw' => $raw], true);
     }
 
+    public function deleteUrl(){
+        return Url::to(['//files/file/delete', 'id' => $this->slug], true);
+    }
+
     public function isImage()
     {
         return strpos($this->mimetype, 'image') !== false;
@@ -324,7 +328,7 @@ class File extends ActiveRecord
         {
             // we don't' have this file in our directory yet
             $parts = explode('.', basename($this->filename_user));
-            $ext = $parts[-1];
+            $ext = end($parts);
             $name = implode(".", array_slice($parts,0,-1));
             $uniq = uniqid($name."-");
             $target = Yii::$app->getModule('files')->uploadPath . "/{$uniq}.{$ext}";
@@ -385,8 +389,19 @@ class File extends ActiveRecord
         if (method_exists($target, 'identifierAttribute')) {
             $identifier_attribute = $target->identifierAttribute();
         }
+        if(method_exists($target, 'primaryKey'))
+        {
+            $identifier_attribute = current($target->primaryKey());
+        }
 
         return $this->hasOne($targetClass::className(), [$identifier_attribute => 'target_id']);
+    }
+
+    public function reassign($model)
+    {
+        $this->model = get_class($model);
+        $this->target_id = $model->primaryKey;
+        $this->save();
     }
 
     public function isDeleteable()
