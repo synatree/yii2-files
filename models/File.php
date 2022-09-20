@@ -49,7 +49,7 @@ class File extends ActiveRecord
     }
 
     public static function getDb(){
-        return \thyseus\files\FileWebModule::getInstance()->get('db');
+        return Yii::$app->getModule('files')->get('db');    // because the model is instantiated without the module, have to use this syntax
     }
 
     public function __toString()
