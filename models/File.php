@@ -48,6 +48,10 @@ class File extends ActiveRecord
         return '{{files}}';
     }
 
+    public static function getDb(){
+        return \thyseus\files\FileWebModule::getInstance()->get('db');
+    }
+
     public function __toString()
     {
         return $this->filename_path;
