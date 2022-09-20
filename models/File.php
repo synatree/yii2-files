@@ -73,9 +73,9 @@ class File extends ActiveRecord
         return Html::a($innerHtml, $this->downloadUrl($raw), ['data-pjax' => '0']);
     }
 
-    public function downloadUrl($raw = false)
+    public function downloadUrl($raw = false, $inline=false)
     {
-        return Url::to(['//files/file/download', 'id' => $this->slug, 'raw' => $raw], true);
+        return Url::to(['//files/file/download', 'id' => $this->slug, 'raw' => $raw, 'inline' => $inline], true);
     }
 
     public function deleteUrl(){
