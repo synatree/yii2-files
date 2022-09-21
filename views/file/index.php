@@ -4,6 +4,7 @@ use thyseus\files\models\FileSearch;
 use kartik\grid\GridView;
 use yii\helpers\Html;
 
+use thyseus\files\FileWebModule;
 /* @var $this yii\web\View */
 /* @var $searchModel app\models\SitecontentSearch */
 /* @var $dataProvider yii\data\ActiveDataProvider */
@@ -27,8 +28,8 @@ $this->params['breadcrumbs'][] = $this->title;
         'columns' => [
             [
                 'attribute' => 'tags',
-                'visible' => Yii::$app->getModule('files')->possibleTags,
-                'filter' => Yii::$app->getModule('files')->possibleTags,
+                'visible' => FileWebModule::getInstance()->possibleTags,
+                'filter' => FileWebModule::getInstance()->possibleTags,
                 'value' => function ($model) {
                     return $model->getTagsFormatted();
                 },

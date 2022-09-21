@@ -5,7 +5,7 @@ use yii\helpers\Html;
 use yii\bootstrap5\ActiveForm;
 use yii\widgets\DetailView;
 use kartik\select2\Select2;
-
+use thyseus\files\FileWebModule;
 
 /* @var $this yii\web\View */
 /* @var $model app\models\Sitecontent */
@@ -88,7 +88,7 @@ $owner = $model->created_by == Yii::$app->user->id;
                     [
                         'attribute' => 'tags',
                         'value' => $model->getTagsFormatted(),
-                        'visible' => Yii::$app->getModule('files')->possibleTags,
+                        'visible' => FileWebModule::getInstance()->possibleTags,
                     ],
                     [
                         'attribute' => 'checksum',
@@ -131,7 +131,7 @@ $owner = $model->created_by == Yii::$app->user->id;
 
                 <hr>
 
-                <?php if (Yii::$app->getModule('files')->possibleTags) { ?>
+                <?php if (FileWebModule::getInstance()->possibleTags) { ?>
 
                     <?php $form = ActiveForm::begin(['id' => 'file-tags-form']); ?>
 

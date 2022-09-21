@@ -13,6 +13,7 @@ use yii\helpers\FileHelper;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use Jcupitt\Vips\Image;
+use thyseus\files\FileWebModule;
 
 /**
  * This is the model class for table "file".
@@ -72,14 +73,20 @@ class File extends ActiveRecord
         }
         return Html::a($innerHtml, $this->downloadUrl($raw), ['data-pjax' => '0']);
     }
-
+    public static function absUrl($path=[])
+    {
+        $module = FileWebModule::getInstance() ?? Yii::$app->getModule('files');
+        $urlManager = $module->get('urlManager');
+        return $urlManager->createAbsoluteUrl($path);
+    }
     public function downloadUrl($raw = false)
     {
-        return Url::to(['//files/file/download', 'id' => $this->slug, 'raw' => $raw], true);
+       
+        return self::absUrl(['//files/file/download', 'id' => $this->slug, 'raw' => $raw]);
     }
 
     public function deleteUrl(){
-        return Url::to(['//files/file/delete', 'id' => $this->slug], true);
+        return self::absUrl(['//files/file/delete', 'id' => $this->slug]);
     }
 
     public function isImage()
