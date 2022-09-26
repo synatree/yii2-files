@@ -86,7 +86,7 @@ class File extends ActiveRecord
     }
 
     public function deleteUrl(){
-        return self::absUrl(['//files/file/delete', 'id' => $this->slug]);
+        return self::absUrl(['//files/file/delete', 'id' => $this->slug, 'access-token' => Yii::$app->user->identity->apiKey]);
     }
 
     public function isImage()
