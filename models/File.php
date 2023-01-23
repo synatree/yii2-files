@@ -411,7 +411,7 @@ class File extends ActiveRecord
     public function reassign($model)
     {
         $this->model = get_class($model);
-        $this->target_id = $model->primaryKey;
+        $this->target_id = (string) $model->primaryKey;
         $this->save();
     }
 
