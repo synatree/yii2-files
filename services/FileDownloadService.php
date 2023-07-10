@@ -8,6 +8,7 @@ use yii\httpclient\Client;
 use yii\httpclient\FormatterInterface;
 use yii\httpclient\ParserInterface;
 use yii\httpclient\Response;
+use thyseus\files\FileWebModule;
 
 
 /**
@@ -83,7 +84,7 @@ class FileDownloadService
 
         $filename_parts = explode('.', $this->filename);
 
-        $target = Yii::$app->getModule('files')->uploadPath . '/' . md5(uniqid()) . "." . array_pop($filename_parts);
+        $target = FileWebModule::getInstance()->uploadPath . '/' . md5(uniqid()) . "." . array_pop($filename_parts);
 
         file_put_contents($target, $response->content);
 

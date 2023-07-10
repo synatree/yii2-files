@@ -5,6 +5,9 @@ use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\helpers\Json;
 use yii\helpers\Url;
+use thyseus\files\models\File;
+use thyseus\files\FileWebModule;
+$module = FileWebModule::getInstance();
 
 /* @var $this yii\web\View */
 /* @var $model app\models\Sitecontent */
@@ -13,13 +16,13 @@ $this->title = $model->filename_user;
 $this->params['breadcrumbs'][] = ['label' => Yii::t('files', 'Files'), 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 
-$cropperOptions = ArrayHelper::merge(Yii::$app->getModule('files')->cropperOptions, [
+$cropperOptions = ArrayHelper::merge($module->cropperOptions, [
     'cropUrl' => ['//files/file/crop', 'id' => $model->slug],
     'image' => $model->downloadUrl(),
 ]);
 
-$crop_target_width = Yii::$app->getModule('files')->crop_target_width;
-$crop_target_height = Yii::$app->getModule('files')->crop_target_height;
+$crop_target_width = $module->crop_target_width;
+$crop_target_height = $module->crop_target_height;
 ?>
     <div class="file-view">
 
@@ -41,7 +44,7 @@ $crop_target_height = Yii::$app->getModule('files')->crop_target_height;
                     // FIXME TODO remove when original demi/cropper plugin has fixed this
                     $this->registerJs("\$('.cropper-image').cropper($json);");
 
-                    $img_receive_url = Url::to(['//files/file/upload-raw', 'id' => $model->slug]);
+                    $img_receive_url = File::absUrl(['//files/file/upload-raw', 'id' => $model->slug]);
 
                     ?>
                 </div>

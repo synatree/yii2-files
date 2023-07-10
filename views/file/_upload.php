@@ -3,13 +3,16 @@
 use kartik\file\FileInput;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Url;
+use thyseus\files\models\File;
+use thyseus\files\FileWebModule;
+$module = FileWebModule::getInstance();
 
 if (!isset($pluginOptions)) {
     $pluginOptions = [];
 }
 
 if (!isset($pluginOptions['uploadUrl'])) {
-    $pluginOptions['uploadUrl'] = Url::to(Yii::$app->getModule('files')->uploadUrl);
+    $pluginOptions['uploadUrl'] = File::absUrl($module->uploadUrl);
 }
 
 if (!isset($target_id) && isset($model)) {

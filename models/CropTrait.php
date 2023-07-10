@@ -2,6 +2,7 @@
 
 namespace thyseus\files\models;
 use Yii;
+use thyseus\files\FileWebModule;
 /**
  * Trait CropTrait
  *
@@ -19,8 +20,8 @@ trait CropTrait
     {
         $imagine = \yii\imagine\Image::getImagine();
 
-        $width = Yii::$app->getModule('files')->crop_target_width;
-        $height = Yii::$app->getModule('files')->crop_target_height;
+        $width = FileWebModule::getInstance()->crop_target_width;
+        $height = FileWebModule::getInstance()->crop_target_height;
 
         $image = $imagine->open($this->filename_path);
 
