@@ -367,7 +367,7 @@ class FileController extends Controller
                     if (!is_array($allowed_mime_types)) {
                         $allowed_mime_types = [$allowed_mime_types];
                     }
-                    if (!File::validateMimeType($file['tmp_name'], $allowed_mime_types)) {
+                    if (!File::validateMimeType($file['name'], $allowed_mime_types)) {
                         continue;
                     }
                 }

@@ -412,7 +412,12 @@ class File extends ActiveRecord
     {
         $this->model = get_class($model);
         $this->target_id = (string) $model->primaryKey;
-        $this->save();
+        if(!$this->save())
+        {
+            Yii::error($this->getErrors());
+            return false;
+        }
+        return true;
     }
 
     public function isDeleteable()
@@ -445,7 +450,10 @@ class File extends ActiveRecord
     public static function validateMimeType($tempName, $mimeTypes)
     {
         $fileMimeType = FileHelper::getMimeType($tempName);
-
+        if(!$fileMimeType)
+        {
+            return null;
+        }
         foreach ($mimeTypes as $mimeType) {
             if ($mimeType === $fileMimeType) {
                 return true;
