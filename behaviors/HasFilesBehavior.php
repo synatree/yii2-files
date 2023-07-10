@@ -127,10 +127,11 @@ class HasFilesBehavior extends Behavior
             ->all();
     }
 
-    public function reassignAllFiles($destination){
+    public function reassignAllFiles($destination, $makePublic = true){
         foreach($this->owner->files as $fileModel)
         {
-            $fileModel->reassign($destination);
+            $fileModel->reassign($destination, $makePublic);
+            
         }
     }
 }

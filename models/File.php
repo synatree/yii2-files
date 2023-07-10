@@ -408,10 +408,14 @@ class File extends ActiveRecord
         return $this->hasOne($targetClass::className(), [$identifier_attribute => 'target_id']);
     }
 
-    public function reassign($model)
+    public function reassign($model, $makePublic = true)
     {
         $this->model = get_class($model);
         $this->target_id = (string) $model->primaryKey;
+        if(!$this->public && $makePublic)
+        {
+            $this->public = 1;
+        }
         if(!$this->save())
         {
             Yii::error($this->getErrors());
