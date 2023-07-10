@@ -13,6 +13,7 @@ use yii\helpers\FileHelper;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use Jcupitt\Vips\Image;
+use thyseus\files\FileWebModule;
 
 /**
  * This is the model class for table "file".
@@ -48,6 +49,10 @@ class File extends ActiveRecord
         return '{{files}}';
     }
 
+    public static function getDb(){
+        return Yii::$app->getModule('files')->get('db');    // because the model is instantiated without the module, have to use this syntax
+    }
+
     public function __toString()
     {
         return $this->filename_path;
@@ -68,14 +73,20 @@ class File extends ActiveRecord
         }
         return Html::a($innerHtml, $this->downloadUrl($raw), ['data-pjax' => '0']);
     }
-
+    public static function absUrl($path=[])
+    {
+        $module = FileWebModule::getInstance() ?? Yii::$app->getModule('files');
+        $urlManager = $module->get('urlManager');
+        return $urlManager->createAbsoluteUrl($path);
+    }
     public function downloadUrl($raw = false)
     {
-        return Url::to(['//files/file/download', 'id' => $this->slug, 'raw' => $raw], true);
+       
+        return self::absUrl(['//files/file/download', 'id' => $this->slug, 'raw' => $raw]);
     }
 
     public function deleteUrl(){
-        return Url::to(['//files/file/delete', 'id' => $this->slug], true);
+        return self::absUrl(['//files/file/delete', 'id' => $this->slug, 'access-token' => Yii::$app->user->identity->apiKey]);
     }
 
     public function isImage()
@@ -400,8 +411,13 @@ class File extends ActiveRecord
     public function reassign($model)
     {
         $this->model = get_class($model);
-        $this->target_id = $model->primaryKey;
-        $this->save();
+        $this->target_id = (string) $model->primaryKey;
+        if(!$this->save())
+        {
+            Yii::error($this->getErrors());
+            return false;
+        }
+        return true;
     }
 
     public function isDeleteable()
@@ -434,7 +450,10 @@ class File extends ActiveRecord
     public static function validateMimeType($tempName, $mimeTypes)
     {
         $fileMimeType = FileHelper::getMimeType($tempName);
-
+        if(!$fileMimeType)
+        {
+            return null;
+        }
         foreach ($mimeTypes as $mimeType) {
             if ($mimeType === $fileMimeType) {
                 return true;
