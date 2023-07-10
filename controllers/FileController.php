@@ -418,7 +418,7 @@ class FileController extends Controller
             $output = ['error' => Yii::t('files', 'Error while uploading files. Please contact the system administrator.')];
 
             if (YII_DEBUG) {
-                $output['error'] .= error_get_last() . $file instanceof File ? $file->getError() : json_encode($file);
+                $output['error'] .= error_get_last() . $file instanceof File ? $file->getErrors() : json_encode($file);
             }
 
             foreach ($paths as $file) {
