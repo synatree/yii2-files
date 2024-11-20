@@ -98,11 +98,8 @@ class File extends ActiveRecord
     {
         if($this->isImage())
         {
-            $thumb = Image::thumbnail(
-                        $this->filename_path, 
-                        $w ?? 480, 
-                        $h ? ['height' => $h] : null
-            );
+            $args = array_filter([$this->filename_path, $w ?? 480, $h ? ['height' => $h] : null]);
+            $thumb = Image::thumbnail(...$args);
             $blob = $thumb->writeToBuffer($format);
         }
         else
