@@ -105,20 +105,36 @@ class File extends ActiveRecord
                 try {
                     if (class_exists('\Jcupitt\Vips\Image')) {
                         $image = \Jcupitt\Vips\Image::newFromFile($this->filename_path);
+                        $originalWidth = $image->width;
+                        $originalHeight = $image->height;
                         
                         // Trim transparent pixels if requested
                         if ($trim) {
                             $image = $this->trimImageWithVIPS($image);
-                        }
-                        
-                        // Create thumbnail
-                        $args = array_filter([$w ?? 480, $h ? ['height' => $h] : null]);
-                        if (!empty($args)) {
-                            $thumb = $image->thumbnail(...$args);
+                            // If VIPS trimming didn't actually trim (same dimensions), fall back to GD for color-based trimming
+                            if ($image->width == $originalWidth && $image->height == $originalHeight && extension_loaded('gd')) {
+                                // VIPS only trims transparency, not color backgrounds - use GD instead
+                                $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format, $trim);
+                            } else {
+                                // VIPS trimming worked, create thumbnail
+                                $args = array_filter([$w ?? 480, $h ? ['height' => $h] : null]);
+                                if (!empty($args)) {
+                                    $thumb = $image->thumbnail(...$args);
+                                } else {
+                                    $thumb = $image;
+                                }
+                                $blob = $thumb->writeToBuffer($format);
+                            }
                         } else {
-                            $thumb = $image;
+                            // No trimming requested, just create thumbnail
+                            $args = array_filter([$w ?? 480, $h ? ['height' => $h] : null]);
+                            if (!empty($args)) {
+                                $thumb = $image->thumbnail(...$args);
+                            } else {
+                                $thumb = $image;
+                            }
+                            $blob = $thumb->writeToBuffer($format);
                         }
-                        $blob = $thumb->writeToBuffer($format);
                     } else {
                         throw new \Exception('VIPS Image class not found');
                     }
@@ -308,37 +324,59 @@ class File extends ActiveRecord
                 $sourceImage = imagecreatefrompng($sourcePath);
                 // Convert palette PNG to truecolor to preserve alpha channel
                 if (!imageistruecolor($sourceImage)) {
+                    // Create truecolor image with alpha support
                     $truecolorImage = imagecreatetruecolor($sourceWidth, $sourceHeight);
                     imagealphablending($truecolorImage, false);
                     imagesavealpha($truecolorImage, true);
-                    $transparent = imagecolorallocatealpha($truecolorImage, 255, 255, 255, 127);
-                    imagefilledrectangle($truecolorImage, 0, 0, $sourceWidth, $sourceHeight, $transparent);
+                    
+                    // Fill entire image with transparent color using imagefilledrectangle
+                    $transparent = imagecolorallocatealpha($truecolorImage, 0, 0, 0, 127);
+                    imagefilledrectangle($truecolorImage, 0, 0, $sourceWidth - 1, $sourceHeight - 1, $transparent);
+                    
+                    // Enable blending for copy operation to preserve source transparency
                     imagealphablending($truecolorImage, true);
+                    // Copy the palette image to truecolor, preserving transparency
                     imagecopy($truecolorImage, $sourceImage, 0, 0, 0, 0, $sourceWidth, $sourceHeight);
+                    // Disable blending to preserve alpha
+                    imagealphablending($truecolorImage, false);
+                    imagesavealpha($truecolorImage, true);
+                    
                     imagedestroy($sourceImage);
                     $sourceImage = $truecolorImage;
+                } else {
+                    // Ensure alpha channel is preserved for truecolor images
+                    imagealphablending($sourceImage, false);
+                    imagesavealpha($sourceImage, true);
                 }
-                // Ensure alpha channel is preserved
-                imagealphablending($sourceImage, false);
-                imagesavealpha($sourceImage, true);
                 break;
             case IMAGETYPE_GIF:
                 $sourceImage = imagecreatefromgif($sourcePath);
                 // Convert GIF to truecolor to handle transparency properly
                 if (!imageistruecolor($sourceImage)) {
+                    // Create truecolor image with alpha support
                     $truecolorImage = imagecreatetruecolor($sourceWidth, $sourceHeight);
                     imagealphablending($truecolorImage, false);
                     imagesavealpha($truecolorImage, true);
-                    $transparent = imagecolorallocatealpha($truecolorImage, 255, 255, 255, 127);
-                    imagefilledrectangle($truecolorImage, 0, 0, $sourceWidth, $sourceHeight, $transparent);
+                    
+                    // Fill entire image with transparent color using imagefilledrectangle
+                    $transparent = imagecolorallocatealpha($truecolorImage, 0, 0, 0, 127);
+                    imagefilledrectangle($truecolorImage, 0, 0, $sourceWidth - 1, $sourceHeight - 1, $transparent);
+                    
+                    // Enable blending for copy operation to preserve source transparency
                     imagealphablending($truecolorImage, true);
+                    // Copy the palette image to truecolor, preserving transparency
                     imagecopy($truecolorImage, $sourceImage, 0, 0, 0, 0, $sourceWidth, $sourceHeight);
+                    // Disable blending to preserve alpha
+                    imagealphablending($truecolorImage, false);
+                    imagesavealpha($truecolorImage, true);
+                    
                     imagedestroy($sourceImage);
                     $sourceImage = $truecolorImage;
+                } else {
+                    // Ensure alpha channel is preserved for truecolor images
+                    imagealphablending($sourceImage, false);
+                    imagesavealpha($sourceImage, true);
                 }
-                // Ensure alpha channel is preserved
-                imagealphablending($sourceImage, false);
-                imagesavealpha($sourceImage, true);
                 break;
             case IMAGETYPE_WEBP:
                 if (function_exists('imagecreatefromwebp')) {
