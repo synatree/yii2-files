@@ -159,7 +159,9 @@ class File extends ActiveRecord
     {
         Yii::info('generateThumbnail() called - File ID: ' . $this->id . ', width: ' . ($width ?? 'null') . ', height: ' . ($height ?? 'null') . ', format: ' . $format . ', trim: ' . ($trim ? 'true' : 'false') . ', outputPath: ' . $outputPath);
         Yii::info('generateThumbnail() - File mimetype: ' . $this->mimetype . ', isImage(): ' . ($this->isImage() ? 'true' : 'false') . ', filename_path: ' . $this->filename_path);
-        Yii::info('generateThumbnail() - VIPS loaded: ' . (extension_loaded('vips') ? 'true' : 'false') . ', GD loaded: ' . (extension_loaded('gd') ? 'true' : 'false'));
+        $vipsLoaded = extension_loaded('vips') || class_exists('\Jcupitt\Vips\Image');
+        $gdLoaded = extension_loaded('gd') || function_exists('imagecreatefromjpeg') || function_exists('imagecreatefrompng');
+        Yii::info('generateThumbnail() - VIPS loaded: ' . ($vipsLoaded ? 'true' : 'false') . ', GD loaded: ' . ($gdLoaded ? 'true' : 'false'));
         
         try {
             // Use the existing inline logic but save to file instead of returning base64
@@ -173,7 +175,7 @@ class File extends ActiveRecord
                 }
                 
                 // Try to use VIPS if available
-                if (extension_loaded('vips')) {
+                if ($vipsLoaded) {
                     Yii::info('VIPS extension is loaded, attempting to use VIPS for file ' . $this->id);
                     try {
                         if (class_exists('\Jcupitt\Vips\Image')) {
@@ -216,12 +218,12 @@ class File extends ActiveRecord
                     } catch (\Exception $e) {
                         // Log VIPS error and fall back to GD if VIPS fails
                         Yii::error('VIPS thumbnail generation failed: ' . $e->getMessage() . ' - Stack trace: ' . $e->getTraceAsString() . ' - Falling back to GD');
-                        if (extension_loaded('gd')) {
+                        if ($gdLoaded) {
                             Yii::info('Falling back to GD for file ' . $this->id);
                             return $this->generateThumbnailWithGD($width, $height, $format, $trim, $outputPath);
                         }
                     }
-                } elseif (extension_loaded('gd')) {
+                } elseif ($gdLoaded) {
                     Yii::info('VIPS not available, using GD for file ' . $this->id);
                     return $this->generateThumbnailWithGD($width, $height, $format, $trim, $outputPath);
                 } else {
