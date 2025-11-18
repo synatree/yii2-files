@@ -84,6 +84,111 @@ class File extends ActiveRecord
         return self::absUrl(['//files/file/download', 'id' => $this->slug, 'raw' => $raw]);
     }
 
+    /**
+     * Get URL to a trimmed thumbnail, generating and caching it if it doesn't exist
+     * @param int|null $width Target width
+     * @param int|null $height Target height (optional, maintains aspect ratio if not provided)
+     * @param string $format Output format (e.g., '.png', '.jpg')
+     * @param bool $trim Whether to trim based on upper-left pixel color
+     * @return string URL to the thumbnail
+     */
+    public function thumbnailUrl($width = null, $height = null, $format = '.png', $trim = false)
+    {
+        if (!$this->isImage()) {
+            return $this->downloadUrl();
+        }
+
+        // Generate cache key based on file properties and parameters
+        $cacheKey = md5($this->id . '_' . $this->checksum . '_' . ($width ?? 'auto') . '_' . ($height ?? 'auto') . '_' . $format . '_' . ($trim ? 'trim' : 'notrim'));
+        $cacheDir = Yii::$app->getModule('files')->uploadPath . '/thumbnails';
+        $cacheFile = $cacheDir . '/' . $cacheKey . $format;
+        
+        // Create thumbnails directory if it doesn't exist
+        if (!is_dir($cacheDir)) {
+            \yii\helpers\FileHelper::createDirectory($cacheDir, 0755, true);
+        }
+        
+        // Generate thumbnail if it doesn't exist
+        if (!file_exists($cacheFile)) {
+            $this->generateThumbnail($width, $height, $format, $trim, $cacheFile);
+        }
+        
+        // Return URL to the cached thumbnail via download action with thumbnail parameter
+        return self::absUrl(['//files/file/download', 'id' => $this->slug, 'thumbnail' => $cacheKey . $format]);
+    }
+
+    /**
+     * Generate and save a thumbnail to the specified path
+     * @param int|null $width Target width
+     * @param int|null $height Target height
+     * @param string $format Output format
+     * @param bool $trim Whether to trim
+     * @param string $outputPath Path where to save the thumbnail
+     * @return bool Success
+     */
+    protected function generateThumbnail($width, $height, $format, $trim, $outputPath)
+    {
+        try {
+            // Use the existing inline logic but save to file instead of returning base64
+            if ($this->isImage()) {
+                // Try to use VIPS if available
+                if (extension_loaded('vips')) {
+                    try {
+                        if (class_exists('\Jcupitt\Vips\Image')) {
+                            $image = \Jcupitt\Vips\Image::newFromFile($this->filename_path);
+                            
+                            // Trim based on upper-left pixel color if requested
+                            if ($trim) {
+                                $image = $this->trimImageWithVIPS($image);
+                            }
+                            
+                            // Create thumbnail
+                            $args = array_filter([$width ?? 480, $height ? ['height' => $height] : null]);
+                            if (!empty($args)) {
+                                $thumb = $image->thumbnail(...$args);
+                            } else {
+                                $thumb = $image;
+                            }
+                            
+                            // Save to file
+                            $thumb->writeToFile($outputPath);
+                            return true;
+                        }
+                    } catch (\Exception $e) {
+                        // Fallback to GD if VIPS fails
+                        if (extension_loaded('gd')) {
+                            return $this->generateThumbnailWithGD($width, $height, $format, $trim, $outputPath);
+                        }
+                    }
+                } elseif (extension_loaded('gd')) {
+                    return $this->generateThumbnailWithGD($width, $height, $format, $trim, $outputPath);
+                }
+            }
+            return false;
+        } catch (\Exception $e) {
+            Yii::error('Failed to generate thumbnail: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Generate thumbnail using GD and save to file
+     * @param int|null $width Target width
+     * @param int|null $height Target height
+     * @param string $format Output format
+     * @param bool $trim Whether to trim
+     * @param string $outputPath Path where to save the thumbnail
+     * @return bool Success
+     */
+    protected function generateThumbnailWithGD($width, $height, $format, $trim, $outputPath)
+    {
+        $blob = $this->createThumbnailWithGD($width ?? 480, $height, $format, $trim);
+        if ($blob) {
+            return file_put_contents($outputPath, $blob) !== false;
+        }
+        return false;
+    }
+
     public function deleteUrl(){
         $module = FileWebModule::getInstance() ?? Yii::$app->getModule('files');
         $accessTokenProperty = $module->accessTokenProperty ?? 'apiKey';

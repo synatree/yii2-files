@@ -275,14 +275,41 @@ class FileController extends Controller
      * Checks permission and downloads the requested file, if possible.
      * Set $raw to false to get the raw file content rather than a download.
      * Increments the download_count of the requested file by one, if valid.
+     * @param string $thumbnail Optional thumbnail cache key to serve a cached thumbnail instead
      * @return mixed
      */
-    public function actionDownload(string $id, bool $raw = false)
+    public function actionDownload(string $id, bool $raw = false, ?string $thumbnail = null)
     {
         $model = $this->findModel($id);
 
         if (!$this->checkAccessPermission($model)) {
             throw new ForbiddenHttpException;
+        }
+
+        // Handle thumbnail requests
+        if ($thumbnail) {
+            $cacheDir = Yii::$app->getModule('files')->uploadPath . '/thumbnails';
+            $thumbnailPath = $cacheDir . '/' . $thumbnail;
+            
+            if (file_exists($thumbnailPath)) {
+                $mimeType = $model->mimetype;
+                // Determine mime type from extension
+                $ext = pathinfo($thumbnailPath, PATHINFO_EXTENSION);
+                if ($ext === 'png') {
+                    $mimeType = 'image/png';
+                } elseif ($ext === 'jpg' || $ext === 'jpeg') {
+                    $mimeType = 'image/jpeg';
+                } elseif ($ext === 'webp') {
+                    $mimeType = 'image/webp';
+                }
+                
+                return Yii::$app->response->sendFile($thumbnailPath, basename($thumbnailPath), [
+                    'mimeType' => $mimeType,
+                    'inline' => true,
+                ]);
+            } else {
+                throw new NotFoundHttpException('Thumbnail not found');
+            }
         }
 
         if (!$model->proofChecksum()) {
