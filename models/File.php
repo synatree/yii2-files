@@ -461,7 +461,22 @@ class File extends ActiveRecord
         Yii::info('GD trim - Has alpha support: ' . ($hasAlpha ? 'true' : 'false'));
         
         // Get the color of the upper-left pixel (background color to trim)
-        $backgroundColor = imagecolorat($image, 0, 0);
+        // Also check other corners to ensure we have the correct border color
+        $topLeft = imagecolorat($image, 0, 0);
+        $topRight = imagecolorat($image, $width - 1, 0);
+        $bottomLeft = imagecolorat($image, 0, $height - 1);
+        $bottomRight = imagecolorat($image, $width - 1, $height - 1);
+        
+        // Use the most common corner color as the background (border) color
+        $cornerColors = [$topLeft, $topRight, $bottomLeft, $bottomRight];
+        $backgroundColor = $topLeft; // Default to top-left
+        $cornerCounts = array_count_values($cornerColors);
+        if (count($cornerCounts) > 1) {
+            // If corners differ, use the most common one
+            arsort($cornerCounts);
+            $backgroundColor = array_key_first($cornerCounts);
+            Yii::info('GD trim - Corner colors differ - TopLeft: ' . $topLeft . ', TopRight: ' . $topRight . ', BottomLeft: ' . $bottomLeft . ', BottomRight: ' . $bottomRight . ', Using most common: ' . $backgroundColor);
+        }
         
         // Extract alpha component if image supports transparency
         // In GD, alpha is in bits 24-31: 0 = opaque, 127 = fully transparent
