@@ -508,9 +508,25 @@ class File extends ActiveRecord
                 
                 if ($hasAlpha && $backgroundAlpha !== null && imageistruecolor($image)) {
                     // For images with alpha channel, do exact RGBA matching
-                    // Include pixel only if it differs from the background color (any component)
-                    if ($pixelColor != $backgroundColor) {
-                        $shouldInclude = true;
+                    // However, if background is nearly transparent (alpha >= 120), 
+                    // also treat pixels with similar high alpha as background (to handle slight variations)
+                    $pixelAlpha = ($pixelColor >> 24) & 0xFF;
+                    
+                    if ($backgroundAlpha >= 120 && $pixelAlpha >= 120) {
+                        // Both are nearly transparent - treat as matching if alpha is close
+                        // Use a tolerance of 10 for nearly transparent pixels
+                        if (abs($pixelAlpha - $backgroundAlpha) <= 10) {
+                            // Pixels are both nearly transparent with similar alpha - treat as background
+                            $shouldInclude = false;
+                        } else {
+                            // Pixel differs significantly in alpha
+                            $shouldInclude = true;
+                        }
+                    } else {
+                        // For opaque or mixed transparency, do exact matching
+                        if ($pixelColor != $backgroundColor) {
+                            $shouldInclude = true;
+                        }
                     }
                 } else {
                     // For images without alpha, simple color comparison
