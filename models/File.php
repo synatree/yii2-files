@@ -12,7 +12,6 @@ use yii\db\ActiveRecord;
 use yii\helpers\FileHelper;
 use yii\helpers\Html;
 use yii\helpers\Url;
-use Jcupitt\Vips\Image;
 use thyseus\files\FileWebModule;
 
 /**
@@ -101,9 +100,34 @@ class File extends ActiveRecord
     {
         if($this->isImage())
         {
-            $args = array_filter([$this->filename_path, $w ?? 480, $h ? ['height' => $h] : null]);
-            $thumb = Image::thumbnail(...$args);
-            $blob = $thumb->writeToBuffer($format);
+            // Try to use VIPS if available
+            if (extension_loaded('vips')) {
+                try {
+                    if (class_exists('\Jcupitt\Vips\Image')) {
+                        $args = array_filter([$this->filename_path, $w ?? 480, $h ? ['height' => $h] : null]);
+                        $thumb = \Jcupitt\Vips\Image::thumbnail(...$args);
+                        $blob = $thumb->writeToBuffer($format);
+                    } else {
+                        throw new \Exception('VIPS Image class not found');
+                    }
+                } catch (\Exception $e) {
+                    // Fallback to GD if VIPS fails
+                    if (extension_loaded('gd')) {
+                        $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format);
+                    } else {
+                        // No image processing extension available, return original
+                        $blob = file_get_contents($this->filename_path);
+                        $mime = $this->mimetype;
+                    }
+                }
+            } elseif (extension_loaded('gd')) {
+                // Fallback to GD if VIPS is not available
+                $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format);
+            } else {
+                // No image processing extension available, return original
+                $blob = file_get_contents($this->filename_path);
+                $mime = $this->mimetype;
+            }
         }
         else
         {
@@ -114,6 +138,106 @@ class File extends ActiveRecord
         $blob = base64_encode($blob);    
         
         return "data:{$mime};base64,$blob";
+    }
+
+    /**
+     * Create thumbnail using GD library as fallback when VIPS is not available
+     * @param int $width Target width
+     * @param int|null $height Target height (optional, maintains aspect ratio if not provided)
+     * @param string $format Output format (e.g., '.jpg', '.png')
+     * @return string Binary image data
+     */
+    protected function createThumbnailWithGD($width, $height = null, $format = '.jpg')
+    {
+        $sourcePath = $this->filename_path;
+        
+        // Determine image type and load source image
+        $imageInfo = getimagesize($sourcePath);
+        if (!$imageInfo) {
+            throw new \Exception('Unable to get image size');
+        }
+        
+        $sourceWidth = $imageInfo[0];
+        $sourceHeight = $imageInfo[1];
+        $sourceType = $imageInfo[2];
+        
+        // Load source image based on type
+        switch ($sourceType) {
+            case IMAGETYPE_JPEG:
+                $sourceImage = imagecreatefromjpeg($sourcePath);
+                break;
+            case IMAGETYPE_PNG:
+                $sourceImage = imagecreatefrompng($sourcePath);
+                break;
+            case IMAGETYPE_GIF:
+                $sourceImage = imagecreatefromgif($sourcePath);
+                break;
+            case IMAGETYPE_WEBP:
+                if (function_exists('imagecreatefromwebp')) {
+                    $sourceImage = imagecreatefromwebp($sourcePath);
+                } else {
+                    throw new \Exception('WebP format not supported by GD');
+                }
+                break;
+            default:
+                throw new \Exception('Unsupported image format');
+        }
+        
+        if (!$sourceImage) {
+            throw new \Exception('Failed to load source image');
+        }
+        
+        // Calculate thumbnail dimensions maintaining aspect ratio
+        if ($height === null) {
+            // Only width specified, calculate height to maintain aspect ratio
+            $ratio = $sourceHeight / $sourceWidth;
+            $height = (int)($width * $ratio);
+        }
+        
+        // Create thumbnail image
+        $thumbImage = imagecreatetruecolor($width, $height);
+        
+        // Preserve transparency for PNG and GIF
+        if ($sourceType == IMAGETYPE_PNG || $sourceType == IMAGETYPE_GIF) {
+            imagealphablending($thumbImage, false);
+            imagesavealpha($thumbImage, true);
+            $transparent = imagecolorallocatealpha($thumbImage, 255, 255, 255, 127);
+            imagefilledrectangle($thumbImage, 0, 0, $width, $height, $transparent);
+        }
+        
+        // Resize image with high quality
+        imagecopyresampled($thumbImage, $sourceImage, 0, 0, 0, 0, $width, $height, $sourceWidth, $sourceHeight);
+        
+        // Output to buffer
+        ob_start();
+        switch (strtolower($format)) {
+            case '.jpg':
+            case '.jpeg':
+                imagejpeg($thumbImage, null, 90);
+                break;
+            case '.png':
+                imagepng($thumbImage, null, 9);
+                break;
+            case '.gif':
+                imagegif($thumbImage);
+                break;
+            case '.webp':
+                if (function_exists('imagewebp')) {
+                    imagewebp($thumbImage, null, 90);
+                } else {
+                    imagejpeg($thumbImage, null, 90); // Fallback to JPEG
+                }
+                break;
+            default:
+                imagejpeg($thumbImage, null, 90); // Default to JPEG
+        }
+        $blob = ob_get_clean();
+        
+        // Clean up
+        imagedestroy($sourceImage);
+        imagedestroy($thumbImage);
+        
+        return $blob;
     }
 
     public function behaviors()
