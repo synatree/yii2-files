@@ -105,36 +105,20 @@ class File extends ActiveRecord
                 try {
                     if (class_exists('\Jcupitt\Vips\Image')) {
                         $image = \Jcupitt\Vips\Image::newFromFile($this->filename_path);
-                        $originalWidth = $image->width;
-                        $originalHeight = $image->height;
                         
-                        // Trim transparent pixels if requested
+                        // Trim based on upper-left pixel color if requested
                         if ($trim) {
                             $image = $this->trimImageWithVIPS($image);
-                            // If VIPS trimming didn't actually trim (same dimensions), fall back to GD for color-based trimming
-                            if ($image->width == $originalWidth && $image->height == $originalHeight && extension_loaded('gd')) {
-                                // VIPS only trims transparency, not color backgrounds - use GD instead
-                                $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format, $trim);
-                            } else {
-                                // VIPS trimming worked, create thumbnail
-                                $args = array_filter([$w ?? 480, $h ? ['height' => $h] : null]);
-                                if (!empty($args)) {
-                                    $thumb = $image->thumbnail(...$args);
-                                } else {
-                                    $thumb = $image;
-                                }
-                                $blob = $thumb->writeToBuffer($format);
-                            }
-                        } else {
-                            // No trimming requested, just create thumbnail
-                            $args = array_filter([$w ?? 480, $h ? ['height' => $h] : null]);
-                            if (!empty($args)) {
-                                $thumb = $image->thumbnail(...$args);
-                            } else {
-                                $thumb = $image;
-                            }
-                            $blob = $thumb->writeToBuffer($format);
                         }
+                        
+                        // Create thumbnail
+                        $args = array_filter([$w ?? 480, $h ? ['height' => $h] : null]);
+                        if (!empty($args)) {
+                            $thumb = $image->thumbnail(...$args);
+                        } else {
+                            $thumb = $image;
+                        }
+                        $blob = $thumb->writeToBuffer($format);
                     } else {
                         throw new \Exception('VIPS Image class not found');
                     }
@@ -169,33 +153,84 @@ class File extends ActiveRecord
     }
 
     /**
-     * Trim transparent pixels from image using VIPS
-     * Note: VIPS find_trim works with transparency. For color-based trimming, GD implementation is used.
+     * Trim image based on upper-left pixel color using VIPS
+     * Detects the upper-left pixel color and trims away all matching pixels to leave only the central image
      * @param \Jcupitt\Vips\Image $image The VIPS image object
      * @return \Jcupitt\Vips\Image The trimmed image
      */
     protected function trimImageWithVIPS($image)
     {
         try {
-            // Use find_trim to detect transparent edges
-            // Threshold of 0 means fully transparent pixels
-            $result = $image->find_trim(['threshold' => 0]);
+            $width = $image->width;
+            $height = $image->height;
             
-            // find_trim returns [left, top, width, height]
-            if (isset($result[0]) && isset($result[1]) && isset($result[2]) && isset($result[3])) {
-                $left = $result[0];
-                $top = $result[1];
-                $width = $result[2];
-                $height = $result[3];
-                
-                // If we found a valid trim area, crop the image
-                if ($width > 0 && $height > 0) {
-                    return $image->crop($left, $top, $width, $height);
+            // Get the upper-left pixel color
+            // Extract a 1x1 pixel from the upper-left corner
+            $sample = $image->crop(0, 0, 1, 1);
+            $pixelData = $sample->writeToArray();
+            
+            // Get RGB values from the pixel (assuming RGB or RGBA format)
+            $backgroundR = $pixelData[0][0][0] ?? 0;
+            $backgroundG = $pixelData[0][0][1] ?? 0;
+            $backgroundB = $pixelData[0][0][2] ?? 0;
+            $hasAlpha = isset($pixelData[0][0][3]);
+            $backgroundA = $hasAlpha ? ($pixelData[0][0][3] ?? 255) : 255;
+            
+            // Convert image to array to scan pixels
+            $imageData = $image->writeToArray();
+            $channels = count($imageData);
+            
+            $minX = $width;
+            $minY = $height;
+            $maxX = -1;
+            $maxY = -1;
+            
+            // Scan all pixels to find bounding box of pixels that differ from the background
+            for ($y = 0; $y < $height; $y++) {
+                for ($x = 0; $x < $width; $x++) {
+                    $pixelR = $imageData[0][$y][$x] ?? 0;
+                    $pixelG = $imageData[1][$y][$x] ?? 0;
+                    $pixelB = $imageData[2][$y][$x] ?? 0;
+                    $pixelA = ($channels > 3) ? ($imageData[3][$y][$x] ?? 255) : 255;
+                    
+                    $shouldInclude = false;
+                    
+                    if ($hasAlpha && $backgroundA < 128) {
+                        // Background is transparent - include any non-transparent pixel
+                        if ($pixelA >= 128) {
+                            $shouldInclude = true;
+                        }
+                    } else {
+                        // Background has color - include pixels that differ in color OR alpha
+                        if ($pixelR != $backgroundR || $pixelG != $backgroundG || $pixelB != $backgroundB || $pixelA != $backgroundA) {
+                            $shouldInclude = true;
+                        }
+                    }
+                    
+                    if ($shouldInclude) {
+                        if ($x < $minX) $minX = $x;
+                        if ($x > $maxX) $maxX = $x;
+                        if ($y < $minY) $minY = $y;
+                        if ($y > $maxY) $maxY = $y;
+                    }
                 }
             }
             
-            // If trimming failed or image has no transparent edges, return original
-            return $image;
+            // If no different pixels found or same dimensions, return original
+            if ($maxX < $minX || $maxY < $minY) {
+                return $image;
+            }
+            
+            $trimWidth = $maxX - $minX + 1;
+            $trimHeight = $maxY - $minY + 1;
+            
+            // If the trim area is the same as the original, no trimming needed
+            if ($minX == 0 && $minY == 0 && $trimWidth == $width && $trimHeight == $height) {
+                return $image;
+            }
+            
+            // Crop to the trimmed bounding box
+            return $image->crop($minX, $minY, $trimWidth, $trimHeight);
         } catch (\Exception $e) {
             // If trimming fails, return original image
             return $image;
