@@ -24,8 +24,10 @@
         "yiisoft/yii2-imagine": "*",
         "kartik-v/yii2-widget-fileinput": "*",
         "kartik-v/yii2-widget-select2": "*",
-        "demi/cropper": "~1.0",
-        "jcupitt/vips": "^1.0.8"
+        "demi/cropper": "~1.0"
+    },
+    "suggest": {
+        "jcupitt/vips": "^1.0.8 - For better image processing performance (optional, falls back to GD if not available)"
     },
     "autoload": {
         "psr-4": {
