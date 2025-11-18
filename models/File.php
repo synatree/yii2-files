@@ -100,17 +100,36 @@ class File extends ActiveRecord
 
         // Generate cache key based on file properties and parameters
         $cacheKey = md5($this->id . '_' . $this->checksum . '_' . ($width ?? 'auto') . '_' . ($height ?? 'auto') . '_' . $format . '_' . ($trim ? 'trim' : 'notrim'));
-        $cacheDir = Yii::$app->getModule('files')->uploadPath . '/thumbnails';
+        $uploadPath = Yii::$app->getModule('files')->uploadPath;
+        // Resolve alias if needed
+        if (strpos($uploadPath, '@') === 0) {
+            $uploadPath = Yii::getAlias($uploadPath);
+        }
+        $cacheDir = $uploadPath . '/thumbnails';
         $cacheFile = $cacheDir . '/' . $cacheKey . $format;
+        
+        Yii::info('Thumbnail path resolution - uploadPath: ' . $uploadPath . ', cacheDir: ' . $cacheDir . ', cacheFile: ' . $cacheFile);
         
         // Create thumbnails directory if it doesn't exist
         if (!is_dir($cacheDir)) {
-            \yii\helpers\FileHelper::createDirectory($cacheDir, 0755, true);
+            $created = \yii\helpers\FileHelper::createDirectory($cacheDir, 0755, true);
+            if (!$created) {
+                Yii::error('Failed to create thumbnails directory: ' . $cacheDir);
+            } else {
+                Yii::info('Created thumbnails directory: ' . $cacheDir);
+            }
         }
         
         // Generate thumbnail if it doesn't exist
         if (!file_exists($cacheFile)) {
-            $this->generateThumbnail($width, $height, $format, $trim, $cacheFile);
+            Yii::info('Generating thumbnail for file ' . $this->id . ' at path: ' . $cacheFile);
+            $success = $this->generateThumbnail($width, $height, $format, $trim, $cacheFile);
+            if (!$success || !file_exists($cacheFile)) {
+                // If generation failed, fall back to inline method
+                Yii::warning('Failed to generate thumbnail, falling back to inline method for file: ' . $this->id . ' - Cache file: ' . $cacheFile . ' - Success: ' . ($success ? 'true' : 'false') . ' - File exists: ' . (file_exists($cacheFile) ? 'true' : 'false'));
+                return $this->inline($width, $height, $format, $this->mimetype, $trim);
+            }
+            Yii::info('Successfully generated thumbnail for file ' . $this->id);
         }
         
         // Return URL to the cached thumbnail via download action with thumbnail parameter
@@ -152,10 +171,16 @@ class File extends ActiveRecord
                             
                             // Save to file
                             $thumb->writeToFile($outputPath);
+                            // Verify file was created
+                            if (!file_exists($outputPath)) {
+                                Yii::warning('VIPS wrote thumbnail but file does not exist: ' . $outputPath);
+                                return false;
+                            }
                             return true;
                         }
                     } catch (\Exception $e) {
-                        // Fallback to GD if VIPS fails
+                        // Log VIPS error and fall back to GD if VIPS fails
+                        Yii::warning('VIPS thumbnail generation failed: ' . $e->getMessage() . ' - Falling back to GD');
                         if (extension_loaded('gd')) {
                             return $this->generateThumbnailWithGD($width, $height, $format, $trim, $outputPath);
                         }
@@ -166,7 +191,7 @@ class File extends ActiveRecord
             }
             return false;
         } catch (\Exception $e) {
-            Yii::error('Failed to generate thumbnail: ' . $e->getMessage());
+            Yii::error('Failed to generate thumbnail: ' . $e->getMessage() . ' - File: ' . $this->filename_path);
             return false;
         }
     }

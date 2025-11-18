@@ -288,7 +288,12 @@ class FileController extends Controller
 
         // Handle thumbnail requests
         if ($thumbnail) {
-            $cacheDir = Yii::$app->getModule('files')->uploadPath . '/thumbnails';
+            $uploadPath = Yii::$app->getModule('files')->uploadPath;
+            // Resolve alias if needed
+            if (strpos($uploadPath, '@') === 0) {
+                $uploadPath = Yii::getAlias($uploadPath);
+            }
+            $cacheDir = $uploadPath . '/thumbnails';
             $thumbnailPath = $cacheDir . '/' . $thumbnail;
             
             if (file_exists($thumbnailPath)) {
