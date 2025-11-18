@@ -94,7 +94,10 @@ class File extends ActiveRecord
      */
     public function thumbnailUrl($width = null, $height = null, $format = '.png', $trim = false)
     {
+        Yii::info('thumbnailUrl() called - File ID: ' . $this->id . ', width: ' . ($width ?? 'null') . ', height: ' . ($height ?? 'null') . ', format: ' . $format . ', trim: ' . ($trim ? 'true' : 'false'));
+        
         if (!$this->isImage()) {
+            Yii::info('File ' . $this->id . ' is not an image, returning downloadUrl()');
             return $this->downloadUrl();
         }
 
@@ -108,32 +111,39 @@ class File extends ActiveRecord
         $cacheDir = $uploadPath . '/thumbnails';
         $cacheFile = $cacheDir . '/' . $cacheKey . $format;
         
-        Yii::info('Thumbnail path resolution - uploadPath: ' . $uploadPath . ', cacheDir: ' . $cacheDir . ', cacheFile: ' . $cacheFile);
+        Yii::info('Thumbnail path resolution - File ID: ' . $this->id . ', uploadPath: ' . $uploadPath . ', cacheDir: ' . $cacheDir . ', cacheFile: ' . $cacheFile . ', cacheKey: ' . $cacheKey);
         
         // Create thumbnails directory if it doesn't exist
         if (!is_dir($cacheDir)) {
+            Yii::info('Creating thumbnails directory: ' . $cacheDir);
             $created = \yii\helpers\FileHelper::createDirectory($cacheDir, 0755, true);
             if (!$created) {
                 Yii::error('Failed to create thumbnails directory: ' . $cacheDir);
             } else {
-                Yii::info('Created thumbnails directory: ' . $cacheDir);
+                Yii::info('Successfully created thumbnails directory: ' . $cacheDir);
             }
+        } else {
+            Yii::info('Thumbnails directory already exists: ' . $cacheDir);
         }
         
         // Generate thumbnail if it doesn't exist
         if (!file_exists($cacheFile)) {
-            Yii::info('Generating thumbnail for file ' . $this->id . ' at path: ' . $cacheFile);
+            Yii::info('Thumbnail does not exist, generating for file ' . $this->id . ' - Source: ' . $this->filename_path . ' - Output: ' . $cacheFile . ' - Trim: ' . ($trim ? 'true' : 'false'));
             $success = $this->generateThumbnail($width, $height, $format, $trim, $cacheFile);
             if (!$success || !file_exists($cacheFile)) {
-                // If generation failed, fall back to inline method
-                Yii::warning('Failed to generate thumbnail, falling back to inline method for file: ' . $this->id . ' - Cache file: ' . $cacheFile . ' - Success: ' . ($success ? 'true' : 'false') . ' - File exists: ' . (file_exists($cacheFile) ? 'true' : 'false'));
-                return $this->inline($width, $height, $format, $this->mimetype, $trim);
+                // If generation failed, log error and return original file URL
+                Yii::error('Failed to generate thumbnail for file: ' . $this->id . ' - Cache file: ' . $cacheFile . ' - Success: ' . ($success ? 'true' : 'false') . ' - File exists: ' . (file_exists($cacheFile) ? 'true' : 'false'));
+                return $this->downloadUrl();
             }
-            Yii::info('Successfully generated thumbnail for file ' . $this->id);
+            Yii::info('Successfully generated thumbnail for file ' . $this->id . ' at ' . $cacheFile . ' - File size: ' . filesize($cacheFile) . ' bytes');
+        } else {
+            Yii::info('Thumbnail already exists for file ' . $this->id . ' at ' . $cacheFile . ' - File size: ' . filesize($cacheFile) . ' bytes');
         }
         
         // Return URL to the cached thumbnail via download action with thumbnail parameter
-        return self::absUrl(['//files/file/download', 'id' => $this->slug, 'thumbnail' => $cacheKey . $format]);
+        $url = self::absUrl(['//files/file/download', 'id' => $this->slug, 'thumbnail' => $cacheKey . $format]);
+        Yii::info('Returning thumbnail URL for file ' . $this->id . ': ' . $url);
+        return $url;
     }
 
     /**
@@ -147,51 +157,72 @@ class File extends ActiveRecord
      */
     protected function generateThumbnail($width, $height, $format, $trim, $outputPath)
     {
+        Yii::info('generateThumbnail() called - File ID: ' . $this->id . ', width: ' . ($width ?? 'null') . ', height: ' . ($height ?? 'null') . ', format: ' . $format . ', trim: ' . ($trim ? 'true' : 'false') . ', outputPath: ' . $outputPath);
+        
         try {
             // Use the existing inline logic but save to file instead of returning base64
             if ($this->isImage()) {
                 // Try to use VIPS if available
                 if (extension_loaded('vips')) {
+                    Yii::info('VIPS extension is loaded, attempting to use VIPS for file ' . $this->id);
                     try {
                         if (class_exists('\Jcupitt\Vips\Image')) {
+                            Yii::info('Loading image with VIPS from: ' . $this->filename_path);
                             $image = \Jcupitt\Vips\Image::newFromFile($this->filename_path);
+                            Yii::info('VIPS image loaded - Original dimensions: ' . $image->width . 'x' . $image->height);
                             
                             // Trim based on upper-left pixel color if requested
                             if ($trim) {
+                                Yii::info('Trimming image with VIPS for file ' . $this->id);
                                 $image = $this->trimImageWithVIPS($image);
+                                Yii::info('After VIPS trim - Dimensions: ' . $image->width . 'x' . $image->height);
+                            } else {
+                                Yii::info('Trim not requested for file ' . $this->id);
                             }
                             
                             // Create thumbnail
                             $args = array_filter([$width ?? 480, $height ? ['height' => $height] : null]);
+                            Yii::info('Creating VIPS thumbnail with args: ' . json_encode($args));
                             if (!empty($args)) {
                                 $thumb = $image->thumbnail(...$args);
                             } else {
                                 $thumb = $image;
                             }
+                            Yii::info('VIPS thumbnail created - Dimensions: ' . $thumb->width . 'x' . $thumb->height);
                             
                             // Save to file
+                            Yii::info('Writing VIPS thumbnail to file: ' . $outputPath);
                             $thumb->writeToFile($outputPath);
                             // Verify file was created
                             if (!file_exists($outputPath)) {
-                                Yii::warning('VIPS wrote thumbnail but file does not exist: ' . $outputPath);
+                                Yii::error('VIPS wrote thumbnail but file does not exist: ' . $outputPath);
                                 return false;
                             }
+                            Yii::info('VIPS thumbnail successfully written to: ' . $outputPath . ' - Size: ' . filesize($outputPath) . ' bytes');
                             return true;
+                        } else {
+                            Yii::warning('VIPS extension loaded but \Jcupitt\Vips\Image class not found');
                         }
                     } catch (\Exception $e) {
                         // Log VIPS error and fall back to GD if VIPS fails
-                        Yii::warning('VIPS thumbnail generation failed: ' . $e->getMessage() . ' - Falling back to GD');
+                        Yii::error('VIPS thumbnail generation failed: ' . $e->getMessage() . ' - Stack trace: ' . $e->getTraceAsString() . ' - Falling back to GD');
                         if (extension_loaded('gd')) {
+                            Yii::info('Falling back to GD for file ' . $this->id);
                             return $this->generateThumbnailWithGD($width, $height, $format, $trim, $outputPath);
                         }
                     }
                 } elseif (extension_loaded('gd')) {
+                    Yii::info('VIPS not available, using GD for file ' . $this->id);
                     return $this->generateThumbnailWithGD($width, $height, $format, $trim, $outputPath);
+                } else {
+                    Yii::error('Neither VIPS nor GD extension is available for file ' . $this->id);
                 }
+            } else {
+                Yii::error('File ' . $this->id . ' is not an image (mimetype: ' . $this->mimetype . ')');
             }
             return false;
         } catch (\Exception $e) {
-            Yii::error('Failed to generate thumbnail: ' . $e->getMessage() . ' - File: ' . $this->filename_path);
+            Yii::error('Failed to generate thumbnail: ' . $e->getMessage() . ' - File: ' . $this->filename_path . ' - Stack trace: ' . $e->getTraceAsString());
             return false;
         }
     }
@@ -207,9 +238,21 @@ class File extends ActiveRecord
      */
     protected function generateThumbnailWithGD($width, $height, $format, $trim, $outputPath)
     {
+        Yii::info('generateThumbnailWithGD() called - File ID: ' . $this->id . ', width: ' . ($width ?? 'null') . ', height: ' . ($height ?? 'null') . ', format: ' . $format . ', trim: ' . ($trim ? 'true' : 'false') . ', outputPath: ' . $outputPath);
+        
         $blob = $this->createThumbnailWithGD($width ?? 480, $height, $format, $trim);
         if ($blob) {
-            return file_put_contents($outputPath, $blob) !== false;
+            Yii::info('GD thumbnail blob generated for file ' . $this->id . ' - Blob size: ' . strlen($blob) . ' bytes');
+            $written = file_put_contents($outputPath, $blob);
+            if ($written !== false) {
+                Yii::info('GD thumbnail successfully written to: ' . $outputPath . ' - Bytes written: ' . $written);
+                return true;
+            } else {
+                Yii::error('Failed to write GD thumbnail to file: ' . $outputPath);
+                return false;
+            }
+        } else {
+            Yii::error('createThumbnailWithGD() returned empty blob for file ' . $this->id);
         }
         return false;
     }
@@ -290,14 +333,17 @@ class File extends ActiveRecord
      */
     protected function trimImageWithVIPS($image)
     {
+        Yii::info('trimImageWithVIPS() called - File ID: ' . $this->id);
         try {
             $width = $image->width;
             $height = $image->height;
+            Yii::info('VIPS trim - Original image dimensions: ' . $width . 'x' . $height);
             
             // Get the upper-left pixel color
             // Extract a 1x1 pixel from the upper-left corner
             $sample = $image->crop(0, 0, 1, 1);
             $pixelData = $sample->writeToArray();
+            Yii::info('VIPS trim - Pixel data structure: ' . json_encode(array_map(function($arr) { return is_array($arr) ? 'array(' . count($arr) . ')' : $arr; }, $pixelData)));
             
             // Get RGB values from the pixel (assuming RGB or RGBA format)
             $backgroundR = $pixelData[0][0][0] ?? 0;
@@ -305,10 +351,13 @@ class File extends ActiveRecord
             $backgroundB = $pixelData[0][0][2] ?? 0;
             $hasAlpha = isset($pixelData[0][0][3]);
             $backgroundA = $hasAlpha ? ($pixelData[0][0][3] ?? 255) : 255;
+            Yii::info('VIPS trim - Background color detected - R: ' . $backgroundR . ', G: ' . $backgroundG . ', B: ' . $backgroundB . ', A: ' . $backgroundA . ', hasAlpha: ' . ($hasAlpha ? 'true' : 'false'));
             
             // Convert image to array to scan pixels
+            Yii::info('VIPS trim - Converting image to array for scanning...');
             $imageData = $image->writeToArray();
             $channels = count($imageData);
+            Yii::info('VIPS trim - Image converted to array, channels: ' . $channels);
             
             $minX = $width;
             $minY = $height;
@@ -316,8 +365,12 @@ class File extends ActiveRecord
             $maxY = -1;
             
             // Scan all pixels to find bounding box of pixels that differ from the background
+            Yii::info('VIPS trim - Scanning ' . ($width * $height) . ' pixels to find trim bounds...');
+            $pixelsScanned = 0;
+            $pixelsIncluded = 0;
             for ($y = 0; $y < $height; $y++) {
                 for ($x = 0; $x < $width; $x++) {
+                    $pixelsScanned++;
                     $pixelR = $imageData[0][$y][$x] ?? 0;
                     $pixelG = $imageData[1][$y][$x] ?? 0;
                     $pixelB = $imageData[2][$y][$x] ?? 0;
@@ -338,6 +391,7 @@ class File extends ActiveRecord
                     }
                     
                     if ($shouldInclude) {
+                        $pixelsIncluded++;
                         if ($x < $minX) $minX = $x;
                         if ($x > $maxX) $maxX = $x;
                         if ($y < $minY) $minY = $y;
@@ -345,24 +399,32 @@ class File extends ActiveRecord
                     }
                 }
             }
+            Yii::info('VIPS trim - Scan complete - Pixels scanned: ' . $pixelsScanned . ', pixels included: ' . $pixelsIncluded . ', bounds: minX=' . $minX . ', maxX=' . $maxX . ', minY=' . $minY . ', maxY=' . $maxY);
             
             // If no different pixels found or same dimensions, return original
             if ($maxX < $minX || $maxY < $minY) {
+                Yii::warning('VIPS trim - No different pixels found, returning original image');
                 return $image;
             }
             
             $trimWidth = $maxX - $minX + 1;
             $trimHeight = $maxY - $minY + 1;
+            Yii::info('VIPS trim - Trim dimensions calculated: ' . $trimWidth . 'x' . $trimHeight . ' at position (' . $minX . ', ' . $minY . ')');
             
             // If the trim area is the same as the original, no trimming needed
             if ($minX == 0 && $minY == 0 && $trimWidth == $width && $trimHeight == $height) {
+                Yii::info('VIPS trim - Trim area matches original, no trimming needed');
                 return $image;
             }
             
             // Crop to the trimmed bounding box
-            return $image->crop($minX, $minY, $trimWidth, $trimHeight);
+            Yii::info('VIPS trim - Cropping image to trimmed bounds');
+            $trimmed = $image->crop($minX, $minY, $trimWidth, $trimHeight);
+            Yii::info('VIPS trim - Successfully trimmed image from ' . $width . 'x' . $height . ' to ' . $trimmed->width . 'x' . $trimmed->height);
+            return $trimmed;
         } catch (\Exception $e) {
             // If trimming fails, return original image
+            Yii::error('VIPS trim failed: ' . $e->getMessage() . ' - Stack trace: ' . $e->getTraceAsString());
             return $image;
         }
     }
@@ -375,12 +437,15 @@ class File extends ActiveRecord
      */
     protected function findTrimBoundsWithGD($image, $sourceType)
     {
+        Yii::info('findTrimBoundsWithGD() called - File ID: ' . $this->id . ', sourceType: ' . $sourceType);
         $width = imagesx($image);
         $height = imagesy($image);
+        Yii::info('GD trim - Image dimensions: ' . $width . 'x' . $height . ', isTrueColor: ' . (imageistruecolor($image) ? 'true' : 'false'));
         
         // Check if image supports transparency (PNG, GIF, WebP)
         // Note: We assume the image is already converted to truecolor if needed
         $hasAlpha = ($sourceType == IMAGETYPE_PNG || $sourceType == IMAGETYPE_GIF || $sourceType == IMAGETYPE_WEBP);
+        Yii::info('GD trim - Has alpha support: ' . ($hasAlpha ? 'true' : 'false'));
         
         // Get the color of the upper-left pixel (background color to trim)
         $backgroundColor = imagecolorat($image, 0, 0);
@@ -392,14 +457,24 @@ class File extends ActiveRecord
             $backgroundAlpha = ($backgroundColor >> 24) & 0xFF;
         }
         
+        // Extract RGB components for logging
+        $bgR = ($backgroundColor >> 16) & 0xFF;
+        $bgG = ($backgroundColor >> 8) & 0xFF;
+        $bgB = $backgroundColor & 0xFF;
+        Yii::info('GD trim - Background color - R: ' . $bgR . ', G: ' . $bgG . ', B: ' . $bgB . ', A: ' . ($backgroundAlpha !== null ? $backgroundAlpha : 'N/A') . ', Full color: ' . $backgroundColor);
+        
         $minX = $width;
         $minY = $height;
         $maxX = -1;
         $maxY = -1;
         
         // Scan all pixels to find bounding box of pixels that differ from the background
+        Yii::info('GD trim - Scanning ' . ($width * $height) . ' pixels to find trim bounds...');
+        $pixelsScanned = 0;
+        $pixelsIncluded = 0;
         for ($y = 0; $y < $height; $y++) {
             for ($x = 0; $x < $width; $x++) {
+                $pixelsScanned++;
                 $pixelColor = imagecolorat($image, $x, $y);
                 $shouldInclude = false;
                 
@@ -429,6 +504,7 @@ class File extends ActiveRecord
                 }
                 
                 if ($shouldInclude) {
+                    $pixelsIncluded++;
                     if ($x < $minX) $minX = $x;
                     if ($x > $maxX) $maxX = $x;
                     if ($y < $minY) $minY = $y;
@@ -436,26 +512,32 @@ class File extends ActiveRecord
                 }
             }
         }
+        Yii::info('GD trim - Scan complete - Pixels scanned: ' . $pixelsScanned . ', pixels included: ' . $pixelsIncluded . ', bounds: minX=' . $minX . ', maxX=' . $maxX . ', minY=' . $minY . ', maxY=' . $maxY);
         
         // If no different pixels found, return false
         if ($maxX < $minX || $maxY < $minY) {
+            Yii::warning('GD trim - No different pixels found, returning false');
             return false;
         }
         
         $trimWidth = $maxX - $minX + 1;
         $trimHeight = $maxY - $minY + 1;
+        Yii::info('GD trim - Trim dimensions calculated: ' . $trimWidth . 'x' . $trimHeight . ' at position (' . $minX . ', ' . $minY . ')');
         
         // If the trim area is the same as the original, no trimming needed
         if ($minX == 0 && $minY == 0 && $trimWidth == $width && $trimHeight == $height) {
+            Yii::info('GD trim - Trim area matches original, returning false (no trim needed)');
             return false;
         }
         
-        return [
+        $bounds = [
             'x' => $minX,
             'y' => $minY,
             'width' => $trimWidth,
             'height' => $trimHeight
         ];
+        Yii::info('GD trim - Returning trim bounds: ' . json_encode($bounds));
+        return $bounds;
     }
 
     /**
@@ -468,27 +550,35 @@ class File extends ActiveRecord
      */
     protected function createThumbnailWithGD($width, $height = null, $format = '.jpg', $trim = false)
     {
+        Yii::info('createThumbnailWithGD() called - File ID: ' . $this->id . ', width: ' . $width . ', height: ' . ($height ?? 'null') . ', format: ' . $format . ', trim: ' . ($trim ? 'true' : 'false'));
         $sourcePath = $this->filename_path;
+        Yii::info('GD thumbnail - Source file: ' . $sourcePath);
         
         // Determine image type and load source image
         $imageInfo = getimagesize($sourcePath);
         if (!$imageInfo) {
+            Yii::error('GD thumbnail - Unable to get image size from: ' . $sourcePath);
             throw new \Exception('Unable to get image size');
         }
         
         $sourceWidth = $imageInfo[0];
         $sourceHeight = $imageInfo[1];
         $sourceType = $imageInfo[2];
+        Yii::info('GD thumbnail - Image info - Width: ' . $sourceWidth . ', Height: ' . $sourceHeight . ', Type: ' . $sourceType);
         
         // Load source image based on type
+        Yii::info('GD thumbnail - Loading image based on type: ' . $sourceType);
         switch ($sourceType) {
             case IMAGETYPE_JPEG:
+                Yii::info('GD thumbnail - Loading JPEG image');
                 $sourceImage = imagecreatefromjpeg($sourcePath);
                 break;
             case IMAGETYPE_PNG:
+                Yii::info('GD thumbnail - Loading PNG image');
                 $sourceImage = imagecreatefrompng($sourcePath);
                 // Convert palette PNG to truecolor to preserve alpha channel
                 if (!imageistruecolor($sourceImage)) {
+                    Yii::info('GD thumbnail - PNG is palette-based, converting to truecolor');
                     // Create truecolor image with alpha support
                     $truecolorImage = imagecreatetruecolor($sourceWidth, $sourceHeight);
                     imagealphablending($truecolorImage, false);
@@ -508,16 +598,20 @@ class File extends ActiveRecord
                     
                     imagedestroy($sourceImage);
                     $sourceImage = $truecolorImage;
+                    Yii::info('GD thumbnail - PNG converted to truecolor');
                 } else {
                     // Ensure alpha channel is preserved for truecolor images
                     imagealphablending($sourceImage, false);
                     imagesavealpha($sourceImage, true);
+                    Yii::info('GD thumbnail - PNG is already truecolor, preserving alpha');
                 }
                 break;
             case IMAGETYPE_GIF:
+                Yii::info('GD thumbnail - Loading GIF image');
                 $sourceImage = imagecreatefromgif($sourcePath);
                 // Convert GIF to truecolor to handle transparency properly
                 if (!imageistruecolor($sourceImage)) {
+                    Yii::info('GD thumbnail - GIF is palette-based, converting to truecolor');
                     // Create truecolor image with alpha support
                     $truecolorImage = imagecreatetruecolor($sourceWidth, $sourceHeight);
                     imagealphablending($truecolorImage, false);
@@ -537,35 +631,44 @@ class File extends ActiveRecord
                     
                     imagedestroy($sourceImage);
                     $sourceImage = $truecolorImage;
+                    Yii::info('GD thumbnail - GIF converted to truecolor');
                 } else {
                     // Ensure alpha channel is preserved for truecolor images
                     imagealphablending($sourceImage, false);
                     imagesavealpha($sourceImage, true);
+                    Yii::info('GD thumbnail - GIF is already truecolor, preserving alpha');
                 }
                 break;
             case IMAGETYPE_WEBP:
+                Yii::info('GD thumbnail - Loading WebP image');
                 if (function_exists('imagecreatefromwebp')) {
                     $sourceImage = imagecreatefromwebp($sourcePath);
                     // Ensure alpha channel is preserved
                     imagealphablending($sourceImage, false);
                     imagesavealpha($sourceImage, true);
                 } else {
+                    Yii::error('GD thumbnail - WebP format not supported by GD');
                     throw new \Exception('WebP format not supported by GD');
                 }
                 break;
             default:
+                Yii::error('GD thumbnail - Unsupported image format: ' . $sourceType);
                 throw new \Exception('Unsupported image format');
         }
         
         if (!$sourceImage) {
+            Yii::error('GD thumbnail - Failed to load source image from: ' . $sourcePath);
             throw new \Exception('Failed to load source image');
         }
+        Yii::info('GD thumbnail - Source image loaded successfully - Dimensions: ' . imagesx($sourceImage) . 'x' . imagesy($sourceImage) . ', isTrueColor: ' . (imageistruecolor($sourceImage) ? 'true' : 'false'));
         
         // Trim based on upper-left pixel color if requested
         $trimBounds = null;
         if ($trim) {
+            Yii::info('GD thumbnail - Trim requested, calling findTrimBoundsWithGD()');
             $trimBounds = $this->findTrimBoundsWithGD($sourceImage, $sourceType);
             if ($trimBounds) {
+                Yii::info('GD thumbnail - Trim bounds found: ' . json_encode($trimBounds) . ' - Creating trimmed image');
                 // Create a new image with the trimmed dimensions
                 $trimmedImage = imagecreatetruecolor($trimBounds['width'], $trimBounds['height']);
                 
@@ -582,6 +685,7 @@ class File extends ActiveRecord
                 imagesavealpha($trimmedImage, true);
                 imagealphablending($sourceImage, false);
                 imagesavealpha($sourceImage, true);
+                Yii::info('GD thumbnail - Copying trimmed region from (' . $trimBounds['x'] . ', ' . $trimBounds['y'] . ') size ' . $trimBounds['width'] . 'x' . $trimBounds['height']);
                 imagecopyresampled($trimmedImage, $sourceImage, 0, 0, $trimBounds['x'], $trimBounds['y'], $trimBounds['width'], $trimBounds['height'], $trimBounds['width'], $trimBounds['height']);
                 
                 // Replace source image with trimmed version
@@ -589,7 +693,12 @@ class File extends ActiveRecord
                 $sourceImage = $trimmedImage;
                 $sourceWidth = $trimBounds['width'];
                 $sourceHeight = $trimBounds['height'];
+                Yii::info('GD thumbnail - Image trimmed successfully - New dimensions: ' . $sourceWidth . 'x' . $sourceHeight);
+            } else {
+                Yii::info('GD thumbnail - findTrimBoundsWithGD() returned false, no trimming performed');
             }
+        } else {
+            Yii::info('GD thumbnail - Trim not requested');
         }
         
         // Calculate thumbnail dimensions maintaining aspect ratio
@@ -611,9 +720,11 @@ class File extends ActiveRecord
         }
         
         // Resize image with high quality
+        Yii::info('GD thumbnail - Resizing from ' . $sourceWidth . 'x' . $sourceHeight . ' to ' . $width . 'x' . $height);
         imagecopyresampled($thumbImage, $sourceImage, 0, 0, 0, 0, $width, $height, $sourceWidth, $sourceHeight);
         
         // Output to buffer
+        Yii::info('GD thumbnail - Generating output blob in format: ' . $format);
         ob_start();
         switch (strtolower($format)) {
             case '.jpg':
@@ -637,6 +748,7 @@ class File extends ActiveRecord
                 imagejpeg($thumbImage, null, 90); // Default to JPEG
         }
         $blob = ob_get_clean();
+        Yii::info('GD thumbnail - Blob generated successfully - Size: ' . strlen($blob) . ' bytes');
         
         // Clean up
         imagedestroy($sourceImage);
