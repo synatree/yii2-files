@@ -284,6 +284,12 @@ class File extends ActiveRecord
 
     public function inline($w=null, $h=null, $format='.jpg', $mime='image/jpeg', $trim=false)
     {
+        // Check if file exists before processing
+        if (!file_exists($this->filename_path) || !is_readable($this->filename_path)) {
+            Yii::error('File::inline() - Source file does not exist or is not readable: ' . $this->filename_path . ' (File ID: ' . $this->id . ')');
+            return null; // Return null to indicate file is missing
+        }
+        
         if($this->isImage())
         {
             // Try to use VIPS if available
@@ -311,7 +317,12 @@ class File extends ActiveRecord
                 } catch (\Exception $e) {
                     // Fallback to GD if VIPS fails
                     if (extension_loaded('gd')) {
-                        $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format, $trim);
+                        try {
+                            $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format, $trim);
+                        } catch (\Exception $gdException) {
+                            Yii::error('File::inline() - GD thumbnail creation failed: ' . $gdException->getMessage());
+                            return null; // Return null if both VIPS and GD fail
+                        }
                     } else {
                         // No image processing extension available, return original
                         $blob = file_get_contents($this->filename_path);
@@ -320,7 +331,12 @@ class File extends ActiveRecord
                 }
             } elseif (extension_loaded('gd')) {
                 // Fallback to GD if VIPS is not available
-                $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format, $trim);
+                try {
+                    $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format, $trim);
+                } catch (\Exception $gdException) {
+                    Yii::error('File::inline() - GD thumbnail creation failed: ' . $gdException->getMessage());
+                    return null; // Return null if GD fails
+                }
             } else {
                 // No image processing extension available, return original
                 $blob = file_get_contents($this->filename_path);
@@ -586,11 +602,17 @@ class File extends ActiveRecord
         $sourcePath = $this->filename_path;
         Yii::info('GD thumbnail - Source file: ' . $sourcePath);
         
+        // Check if file exists
+        if (!file_exists($sourcePath) || !is_readable($sourcePath)) {
+            Yii::error('GD thumbnail - Source file does not exist or is not readable: ' . $sourcePath);
+            throw new \Exception('Source file does not exist or is not readable');
+        }
+        
         // Determine image type and load source image
         $imageInfo = getimagesize($sourcePath);
         if (!$imageInfo) {
-            Yii::error('GD thumbnail - Unable to get image size from: ' . $sourcePath);
-            throw new \Exception('Unable to get image size');
+            Yii::error('GD thumbnail - Unable to get image size from: ' . $sourcePath . ' (file exists but may be corrupted or not a valid image)');
+            throw new \Exception('Unable to get image size - file may be corrupted or not a valid image');
         }
         
         $sourceWidth = $imageInfo[0];
