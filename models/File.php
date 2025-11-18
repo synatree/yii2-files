@@ -96,7 +96,7 @@ class File extends ActiveRecord
         return strpos($this->mimetype, 'image') !== false;
     }
 
-    public function inline($w=null, $h=null, $format='.jpg', $mime='image/jpeg')
+    public function inline($w=null, $h=null, $format='.jpg', $mime='image/jpeg', $trim=false)
     {
         if($this->isImage())
         {
@@ -104,8 +104,20 @@ class File extends ActiveRecord
             if (extension_loaded('vips')) {
                 try {
                     if (class_exists('\Jcupitt\Vips\Image')) {
-                        $args = array_filter([$this->filename_path, $w ?? 480, $h ? ['height' => $h] : null]);
-                        $thumb = \Jcupitt\Vips\Image::thumbnail(...$args);
+                        $image = \Jcupitt\Vips\Image::newFromFile($this->filename_path);
+                        
+                        // Trim transparent pixels if requested
+                        if ($trim) {
+                            $image = $this->trimImageWithVIPS($image);
+                        }
+                        
+                        // Create thumbnail
+                        $args = array_filter([$w ?? 480, $h ? ['height' => $h] : null]);
+                        if (!empty($args)) {
+                            $thumb = $image->thumbnail(...$args);
+                        } else {
+                            $thumb = $image;
+                        }
                         $blob = $thumb->writeToBuffer($format);
                     } else {
                         throw new \Exception('VIPS Image class not found');
@@ -113,7 +125,7 @@ class File extends ActiveRecord
                 } catch (\Exception $e) {
                     // Fallback to GD if VIPS fails
                     if (extension_loaded('gd')) {
-                        $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format);
+                        $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format, $trim);
                     } else {
                         // No image processing extension available, return original
                         $blob = file_get_contents($this->filename_path);
@@ -122,7 +134,7 @@ class File extends ActiveRecord
                 }
             } elseif (extension_loaded('gd')) {
                 // Fallback to GD if VIPS is not available
-                $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format);
+                $blob = $this->createThumbnailWithGD($w ?? 480, $h, $format, $trim);
             } else {
                 // No image processing extension available, return original
                 $blob = file_get_contents($this->filename_path);
@@ -141,13 +153,105 @@ class File extends ActiveRecord
     }
 
     /**
+     * Trim transparent pixels from image using VIPS
+     * @param \Jcupitt\Vips\Image $image The VIPS image object
+     * @return \Jcupitt\Vips\Image The trimmed image
+     */
+    protected function trimImageWithVIPS($image)
+    {
+        try {
+            // Use find_trim to detect transparent edges
+            // Threshold of 0 means fully transparent pixels
+            $result = $image->find_trim(['threshold' => 0]);
+            
+            // find_trim returns [left, top, width, height]
+            if (isset($result[0]) && isset($result[1]) && isset($result[2]) && isset($result[3])) {
+                $left = $result[0];
+                $top = $result[1];
+                $width = $result[2];
+                $height = $result[3];
+                
+                // If we found a valid trim area, crop the image
+                if ($width > 0 && $height > 0) {
+                    return $image->crop($left, $top, $width, $height);
+                }
+            }
+            
+            // If trimming failed or image has no transparent edges, return original
+            return $image;
+        } catch (\Exception $e) {
+            // If trimming fails, return original image
+            return $image;
+        }
+    }
+
+    /**
+     * Trim transparent pixels from image using GD
+     * @param resource $image The GD image resource
+     * @param int $sourceType The image type constant (IMAGETYPE_PNG, etc.)
+     * @return array|false Returns array with [x, y, width, height] of bounding box, or false if no trim needed
+     */
+    protected function findTrimBoundsWithGD($image, $sourceType)
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+        
+        // Only trim images that support transparency
+        if ($sourceType != IMAGETYPE_PNG && $sourceType != IMAGETYPE_GIF && $sourceType != IMAGETYPE_WEBP) {
+            return false;
+        }
+        
+        $minX = $width;
+        $minY = $height;
+        $maxX = -1;
+        $maxY = -1;
+        
+        // Scan all pixels to find bounding box of non-transparent content
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                $rgba = imagecolorat($image, $x, $y);
+                $alpha = ($rgba >> 24) & 0x7F; // Get alpha channel (0-127, where 127 is fully transparent)
+                
+                // If pixel is not fully transparent
+                if ($alpha < 127) {
+                    if ($x < $minX) $minX = $x;
+                    if ($x > $maxX) $maxX = $x;
+                    if ($y < $minY) $minY = $y;
+                    if ($y > $maxY) $maxY = $y;
+                }
+            }
+        }
+        
+        // If no non-transparent pixels found, return false
+        if ($maxX < $minX || $maxY < $minY) {
+            return false;
+        }
+        
+        $trimWidth = $maxX - $minX + 1;
+        $trimHeight = $maxY - $minY + 1;
+        
+        // If the trim area is the same as the original, no trimming needed
+        if ($minX == 0 && $minY == 0 && $trimWidth == $width && $trimHeight == $height) {
+            return false;
+        }
+        
+        return [
+            'x' => $minX,
+            'y' => $minY,
+            'width' => $trimWidth,
+            'height' => $trimHeight
+        ];
+    }
+
+    /**
      * Create thumbnail using GD library as fallback when VIPS is not available
      * @param int $width Target width
      * @param int|null $height Target height (optional, maintains aspect ratio if not provided)
      * @param string $format Output format (e.g., '.jpg', '.png')
+     * @param bool $trim Whether to trim transparent pixels before resizing
      * @return string Binary image data
      */
-    protected function createThumbnailWithGD($width, $height = null, $format = '.jpg')
+    protected function createThumbnailWithGD($width, $height = null, $format = '.jpg', $trim = false)
     {
         $sourcePath = $this->filename_path;
         
@@ -187,6 +291,33 @@ class File extends ActiveRecord
             throw new \Exception('Failed to load source image');
         }
         
+        // Trim transparent pixels if requested
+        $trimBounds = null;
+        if ($trim) {
+            $trimBounds = $this->findTrimBoundsWithGD($sourceImage, $sourceType);
+            if ($trimBounds) {
+                // Create a new image with the trimmed dimensions
+                $trimmedImage = imagecreatetruecolor($trimBounds['width'], $trimBounds['height']);
+                
+                // Preserve transparency
+                if ($sourceType == IMAGETYPE_PNG || $sourceType == IMAGETYPE_GIF || $sourceType == IMAGETYPE_WEBP) {
+                    imagealphablending($trimmedImage, false);
+                    imagesavealpha($trimmedImage, true);
+                    $transparent = imagecolorallocatealpha($trimmedImage, 255, 255, 255, 127);
+                    imagefilledrectangle($trimmedImage, 0, 0, $trimBounds['width'], $trimBounds['height'], $transparent);
+                }
+                
+                // Copy the trimmed region
+                imagecopy($trimmedImage, $sourceImage, 0, 0, $trimBounds['x'], $trimBounds['y'], $trimBounds['width'], $trimBounds['height']);
+                
+                // Replace source image with trimmed version
+                imagedestroy($sourceImage);
+                $sourceImage = $trimmedImage;
+                $sourceWidth = $trimBounds['width'];
+                $sourceHeight = $trimBounds['height'];
+            }
+        }
+        
         // Calculate thumbnail dimensions maintaining aspect ratio
         if ($height === null) {
             // Only width specified, calculate height to maintain aspect ratio
@@ -198,7 +329,7 @@ class File extends ActiveRecord
         $thumbImage = imagecreatetruecolor($width, $height);
         
         // Preserve transparency for PNG and GIF
-        if ($sourceType == IMAGETYPE_PNG || $sourceType == IMAGETYPE_GIF) {
+        if ($sourceType == IMAGETYPE_PNG || $sourceType == IMAGETYPE_GIF || $sourceType == IMAGETYPE_WEBP) {
             imagealphablending($thumbImage, false);
             imagesavealpha($thumbImage, true);
             $transparent = imagecolorallocatealpha($thumbImage, 255, 255, 255, 127);
@@ -498,8 +629,20 @@ class File extends ActiveRecord
     public static function possibleTagsTranslated()
     {
         $tags = [];
-        foreach (Yii::$app->getModule('files')->possibleTags as $key => $value) {
-            $tags[$key] = Yii::t('app', $value);
+        $possibleTags = Yii::$app->getModule('files')->possibleTags ?? [];
+        
+        // Handle both numeric-indexed arrays and associative arrays
+        foreach ($possibleTags as $key => $value) {
+            // If key is numeric, use the value as both key and label
+            if (is_numeric($key)) {
+                $tagKey = $value;
+                $tagLabel = $value;
+            } else {
+                // If key is string, use key as tag value and value as label
+                $tagKey = $key;
+                $tagLabel = $value;
+            }
+            $tags[$tagKey] = Yii::t('app', $tagLabel);
         }
 
         return $tags;
