@@ -154,6 +154,7 @@ class File extends ActiveRecord
 
     /**
      * Trim transparent pixels from image using VIPS
+     * Note: VIPS find_trim works with transparency. For color-based trimming, GD implementation is used.
      * @param \Jcupitt\Vips\Image $image The VIPS image object
      * @return \Jcupitt\Vips\Image The trimmed image
      */
