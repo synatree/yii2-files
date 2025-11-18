@@ -101,6 +101,13 @@ class File extends ActiveRecord
             return $this->downloadUrl();
         }
 
+        // SVG files are scalable vector graphics - no need to generate thumbnails
+        // Return the original file URL directly
+        if ($this->isSvg()) {
+            Yii::info('File ' . $this->id . ' is an SVG, returning downloadUrl() directly (SVG is scalable)');
+            return $this->downloadUrl(true); // true = raw URL
+        }
+
         // Generate cache key based on file properties and parameters
         $cacheKey = md5($this->id . '_' . $this->checksum . '_' . ($width ?? 'auto') . '_' . ($height ?? 'auto') . '_' . $format . '_' . ($trim ? 'trim' : 'notrim'));
         $uploadPath = Yii::$app->getModule('files')->uploadPath;
@@ -168,10 +175,11 @@ class File extends ActiveRecord
             if ($this->isImage()) {
                 Yii::info('generateThumbnail() - File is an image, proceeding with thumbnail generation');
                 
-                // Skip SVG files - they can't be processed by VIPS or GD directly
-                if (strpos($this->mimetype, 'svg') !== false) {
-                    Yii::warning('generateThumbnail() - SVG files cannot be processed by VIPS/GD, skipping thumbnail generation for file ' . $this->id);
-                    return false;
+                // SVG files are scalable vector graphics - no thumbnail generation needed
+                // They should be handled by thumbnailUrl() which returns the original file
+                if ($this->isSvg()) {
+                    Yii::info('generateThumbnail() - SVG file detected, thumbnail generation not needed (SVG is scalable)');
+                    return false; // Return false so thumbnailUrl() can return the original file URL
                 }
                 
                 // Try to use VIPS if available
@@ -282,6 +290,16 @@ class File extends ActiveRecord
         return strpos($this->mimetype, 'image') !== false;
     }
 
+    /**
+     * Check if the file is an SVG image
+     * @return bool
+     */
+    public function isSvg()
+    {
+        return strpos($this->mimetype, 'svg') !== false || 
+               (isset($this->filename_user) && strtolower(pathinfo($this->filename_user, PATHINFO_EXTENSION)) === 'svg');
+    }
+
     public function inline($w=null, $h=null, $format='.jpg', $mime='image/jpeg', $trim=false)
     {
         // Check if file exists before processing
@@ -292,6 +310,15 @@ class File extends ActiveRecord
         
         if($this->isImage())
         {
+            // SVG files are vector graphics - return them directly as data URIs
+            // No processing needed since they're already scalable
+            if ($this->isSvg()) {
+                $blob = file_get_contents($this->filename_path);
+                $mime = $this->mimetype ?: 'image/svg+xml';
+                $blob = base64_encode($blob);
+                return "data:{$mime};base64,$blob";
+            }
+            
             // Try to use VIPS if available
             if (extension_loaded('vips')) {
                 try {
