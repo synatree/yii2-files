@@ -198,8 +198,8 @@ class File extends ActiveRecord
         $height = imagesy($image);
         
         // Check if image supports transparency (PNG, GIF, WebP)
-        $hasAlpha = ($sourceType == IMAGETYPE_PNG || $sourceType == IMAGETYPE_GIF || $sourceType == IMAGETYPE_WEBP) 
-                    && imageistruecolor($image);
+        // Note: We assume the image is already converted to truecolor if needed
+        $hasAlpha = ($sourceType == IMAGETYPE_PNG || $sourceType == IMAGETYPE_GIF || $sourceType == IMAGETYPE_WEBP);
         
         // Get the color of the upper-left pixel (background color to trim)
         $backgroundColor = imagecolorat($image, 0, 0);
@@ -207,7 +207,7 @@ class File extends ActiveRecord
         // Extract alpha component if image supports transparency
         // In GD, alpha is in bits 24-31: 0 = opaque, 127 = fully transparent
         $backgroundAlpha = null;
-        if ($hasAlpha) {
+        if ($hasAlpha && imageistruecolor($image)) {
             $backgroundAlpha = ($backgroundColor >> 24) & 0xFF;
         }
         
@@ -222,7 +222,7 @@ class File extends ActiveRecord
                 $pixelColor = imagecolorat($image, $x, $y);
                 $shouldInclude = false;
                 
-                if ($hasAlpha && $backgroundAlpha !== null) {
+                if ($hasAlpha && $backgroundAlpha !== null && imageistruecolor($image)) {
                     // For images with alpha channel, extract pixel alpha
                     $pixelAlpha = ($pixelColor >> 24) & 0xFF;
                     
@@ -306,13 +306,46 @@ class File extends ActiveRecord
                 break;
             case IMAGETYPE_PNG:
                 $sourceImage = imagecreatefrompng($sourcePath);
+                // Convert palette PNG to truecolor to preserve alpha channel
+                if (!imageistruecolor($sourceImage)) {
+                    $truecolorImage = imagecreatetruecolor($sourceWidth, $sourceHeight);
+                    imagealphablending($truecolorImage, false);
+                    imagesavealpha($truecolorImage, true);
+                    $transparent = imagecolorallocatealpha($truecolorImage, 255, 255, 255, 127);
+                    imagefilledrectangle($truecolorImage, 0, 0, $sourceWidth, $sourceHeight, $transparent);
+                    imagealphablending($truecolorImage, true);
+                    imagecopy($truecolorImage, $sourceImage, 0, 0, 0, 0, $sourceWidth, $sourceHeight);
+                    imagedestroy($sourceImage);
+                    $sourceImage = $truecolorImage;
+                }
+                // Ensure alpha channel is preserved
+                imagealphablending($sourceImage, false);
+                imagesavealpha($sourceImage, true);
                 break;
             case IMAGETYPE_GIF:
                 $sourceImage = imagecreatefromgif($sourcePath);
+                // Convert GIF to truecolor to handle transparency properly
+                if (!imageistruecolor($sourceImage)) {
+                    $truecolorImage = imagecreatetruecolor($sourceWidth, $sourceHeight);
+                    imagealphablending($truecolorImage, false);
+                    imagesavealpha($truecolorImage, true);
+                    $transparent = imagecolorallocatealpha($truecolorImage, 255, 255, 255, 127);
+                    imagefilledrectangle($truecolorImage, 0, 0, $sourceWidth, $sourceHeight, $transparent);
+                    imagealphablending($truecolorImage, true);
+                    imagecopy($truecolorImage, $sourceImage, 0, 0, 0, 0, $sourceWidth, $sourceHeight);
+                    imagedestroy($sourceImage);
+                    $sourceImage = $truecolorImage;
+                }
+                // Ensure alpha channel is preserved
+                imagealphablending($sourceImage, false);
+                imagesavealpha($sourceImage, true);
                 break;
             case IMAGETYPE_WEBP:
                 if (function_exists('imagecreatefromwebp')) {
                     $sourceImage = imagecreatefromwebp($sourcePath);
+                    // Ensure alpha channel is preserved
+                    imagealphablending($sourceImage, false);
+                    imagesavealpha($sourceImage, true);
                 } else {
                     throw new \Exception('WebP format not supported by GD');
                 }
@@ -341,8 +374,12 @@ class File extends ActiveRecord
                     imagefilledrectangle($trimmedImage, 0, 0, $trimBounds['width'], $trimBounds['height'], $transparent);
                 }
                 
-                // Copy the trimmed region
-                imagecopy($trimmedImage, $sourceImage, 0, 0, $trimBounds['x'], $trimBounds['y'], $trimBounds['width'], $trimBounds['height']);
+                // Copy the trimmed region with proper alpha handling
+                imagealphablending($trimmedImage, false);
+                imagesavealpha($trimmedImage, true);
+                imagealphablending($sourceImage, false);
+                imagesavealpha($sourceImage, true);
+                imagecopyresampled($trimmedImage, $sourceImage, 0, 0, $trimBounds['x'], $trimBounds['y'], $trimBounds['width'], $trimBounds['height'], $trimBounds['width'], $trimBounds['height']);
                 
                 // Replace source image with trimmed version
                 imagedestroy($sourceImage);
