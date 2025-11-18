@@ -8,6 +8,16 @@ use yii\base\Behavior;
 class HasFilesBehavior extends Behavior
 {
     /**
+     * Base model class name to use for file lookups.
+     * If set, files will be queried using this class name instead of the actual owner class.
+     * This is useful when models extend a base class (e.g., IssuerUi extends Issuer)
+     * but files are attached to the base class.
+     * 
+     * @var string|null
+     */
+    public $baseModelClass = null;
+
+    /**
      * Attaches an relation 'files' to the owner model that retrieves all files.
      *
      * @return yii\db\ActiveQuery
@@ -33,16 +43,18 @@ class HasFilesBehavior extends Behavior
     public function getFiles()
     {
         $identifierAttribute = $this->getIdentifierAttribute();
+        $modelClass = $this->baseModelClass ?? $this->owner::class;
 
         return $this->owner
             ->hasMany(File::class, ['target_id' => $identifierAttribute])
-            ->andWhere(['model' => $this->owner::class])
+            ->andWhere(['model' => $modelClass])
             ->andWhere(['status' => File::STATUS_NORMAL])
             ->orderBy('position ASC');
     }
 
     public function attachFile($fileOptions = []) {
         $attr = $this->getIdentifierAttribute();
+        $modelClass = $this->baseModelClass ?? $this->owner::className();
         $file = Yii::createObject([
             'class' => File::class,
             'attributes' => [
@@ -51,7 +63,7 @@ class HasFilesBehavior extends Behavior
                 'created_by' => Yii::$app->user->id ?? null,
                 'filename_path' => $fileOptions['path'] ?? null,
                 'mimetype' => $fileOptions['type'] ?? null,
-                'model' => $this->owner::className(),
+                'model' => $modelClass,
                 'target_id' => (string) $this->owner->$attr,
                 'target_url' => $fileOptions['target_url']??'',
                 'public' => $fileOptions['public'] ?? 0,
@@ -122,10 +134,11 @@ class HasFilesBehavior extends Behavior
     public function filesWithTag($tag)
     {
         $identifierAttribute = $this->getIdentifierAttribute();
+        $modelClass = $this->baseModelClass ?? $this->owner::class;
 
         return $this->owner
             ->hasMany(File::class, ['target_id' => $identifierAttribute])
-            ->andWhere(['model' => $this->owner::class])
+            ->andWhere(['model' => $modelClass])
             ->andWhere(['like', 'files.tags', $tag])
             ->andWhere(['status' => File::STATUS_NORMAL])
             ->orderBy('position ASC')
