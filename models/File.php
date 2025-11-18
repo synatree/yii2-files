@@ -197,21 +197,57 @@ class File extends ActiveRecord
         $width = imagesx($image);
         $height = imagesy($image);
         
+        // Check if image supports transparency (PNG, GIF, WebP)
+        $hasAlpha = ($sourceType == IMAGETYPE_PNG || $sourceType == IMAGETYPE_GIF || $sourceType == IMAGETYPE_WEBP) 
+                    && imageistruecolor($image);
+        
         // Get the color of the upper-left pixel (background color to trim)
         $backgroundColor = imagecolorat($image, 0, 0);
+        
+        // Extract alpha component if image supports transparency
+        // In GD, alpha is in bits 24-31: 0 = opaque, 127 = fully transparent
+        $backgroundAlpha = null;
+        if ($hasAlpha) {
+            $backgroundAlpha = ($backgroundColor >> 24) & 0xFF;
+        }
         
         $minX = $width;
         $minY = $height;
         $maxX = -1;
         $maxY = -1;
         
-        // Scan all pixels to find bounding box of pixels that differ from the background color
+        // Scan all pixels to find bounding box of pixels that differ from the background
         for ($y = 0; $y < $height; $y++) {
             for ($x = 0; $x < $width; $x++) {
                 $pixelColor = imagecolorat($image, $x, $y);
+                $shouldInclude = false;
                 
-                // If pixel color differs from background color, include it in bounding box
-                if ($pixelColor != $backgroundColor) {
+                if ($hasAlpha && $backgroundAlpha !== null) {
+                    // For images with alpha channel, extract pixel alpha
+                    $pixelAlpha = ($pixelColor >> 24) & 0xFF;
+                    
+                    // If background is transparent (alpha >= 127), trim all transparent pixels
+                    // If background has color, trim pixels matching that exact color+alpha
+                    if ($backgroundAlpha >= 127) {
+                        // Background is transparent - include any non-transparent pixel
+                        if ($pixelAlpha < 127) {
+                            $shouldInclude = true;
+                        }
+                    } else {
+                        // Background has color - include pixels that differ in color OR alpha
+                        // Compare full 32-bit value to account for both RGB and alpha
+                        if ($pixelColor != $backgroundColor) {
+                            $shouldInclude = true;
+                        }
+                    }
+                } else {
+                    // For images without alpha, simple color comparison
+                    if ($pixelColor != $backgroundColor) {
+                        $shouldInclude = true;
+                    }
+                }
+                
+                if ($shouldInclude) {
                     if ($x < $minX) $minX = $x;
                     if ($x > $maxX) $maxX = $x;
                     if ($y < $minY) $minY = $y;
