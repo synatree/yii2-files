@@ -34,7 +34,11 @@ class HasFilesBehavior extends Behavior
     {
         $identifierAttribute = $this->getIdentifierAttribute();
 
-        return $this->owner->hasMany(File::class, ['target_id' => $identifierAttribute])->andWhere(['status' => File::STATUS_NORMAL])->orderBy('position ASC');
+        return $this->owner
+            ->hasMany(File::class, ['target_id' => $identifierAttribute])
+            ->andWhere(['model' => $this->owner::class])
+            ->andWhere(['status' => File::STATUS_NORMAL])
+            ->orderBy('position ASC');
     }
 
     public function attachFile($fileOptions = []) {
@@ -121,6 +125,7 @@ class HasFilesBehavior extends Behavior
 
         return $this->owner
             ->hasMany(File::class, ['target_id' => $identifierAttribute])
+            ->andWhere(['model' => $this->owner::class])
             ->andWhere(['like', 'files.tags', $tag])
             ->andWhere(['status' => File::STATUS_NORMAL])
             ->orderBy('position ASC')

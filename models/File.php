@@ -186,7 +186,7 @@ class File extends ActiveRecord
     }
 
     /**
-     * Trim transparent pixels from image using GD
+     * Trim image based on upper-left pixel color using GD
      * @param resource $image The GD image resource
      * @param int $sourceType The image type constant (IMAGETYPE_PNG, etc.)
      * @return array|false Returns array with [x, y, width, height] of bounding box, or false if no trim needed
@@ -196,24 +196,21 @@ class File extends ActiveRecord
         $width = imagesx($image);
         $height = imagesy($image);
         
-        // Only trim images that support transparency
-        if ($sourceType != IMAGETYPE_PNG && $sourceType != IMAGETYPE_GIF && $sourceType != IMAGETYPE_WEBP) {
-            return false;
-        }
+        // Get the color of the upper-left pixel (background color to trim)
+        $backgroundColor = imagecolorat($image, 0, 0);
         
         $minX = $width;
         $minY = $height;
         $maxX = -1;
         $maxY = -1;
         
-        // Scan all pixels to find bounding box of non-transparent content
+        // Scan all pixels to find bounding box of pixels that differ from the background color
         for ($y = 0; $y < $height; $y++) {
             for ($x = 0; $x < $width; $x++) {
-                $rgba = imagecolorat($image, $x, $y);
-                $alpha = ($rgba >> 24) & 0x7F; // Get alpha channel (0-127, where 127 is fully transparent)
+                $pixelColor = imagecolorat($image, $x, $y);
                 
-                // If pixel is not fully transparent
-                if ($alpha < 127) {
+                // If pixel color differs from background color, include it in bounding box
+                if ($pixelColor != $backgroundColor) {
                     if ($x < $minX) $minX = $x;
                     if ($x > $maxX) $maxX = $x;
                     if ($y < $minY) $minY = $y;
@@ -222,7 +219,7 @@ class File extends ActiveRecord
             }
         }
         
-        // If no non-transparent pixels found, return false
+        // If no different pixels found, return false
         if ($maxX < $minX || $maxY < $minY) {
             return false;
         }
@@ -291,7 +288,7 @@ class File extends ActiveRecord
             throw new \Exception('Failed to load source image');
         }
         
-        // Trim transparent pixels if requested
+        // Trim based on upper-left pixel color if requested
         $trimBounds = null;
         if ($trim) {
             $trimBounds = $this->findTrimBoundsWithGD($sourceImage, $sourceType);
@@ -299,7 +296,7 @@ class File extends ActiveRecord
                 // Create a new image with the trimmed dimensions
                 $trimmedImage = imagecreatetruecolor($trimBounds['width'], $trimBounds['height']);
                 
-                // Preserve transparency
+                // Preserve transparency for formats that support it
                 if ($sourceType == IMAGETYPE_PNG || $sourceType == IMAGETYPE_GIF || $sourceType == IMAGETYPE_WEBP) {
                     imagealphablending($trimmedImage, false);
                     imagesavealpha($trimmedImage, true);
