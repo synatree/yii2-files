@@ -492,22 +492,10 @@ class File extends ActiveRecord
                 $shouldInclude = false;
                 
                 if ($hasAlpha && $backgroundAlpha !== null && imageistruecolor($image)) {
-                    // For images with alpha channel, extract pixel alpha
-                    $pixelAlpha = ($pixelColor >> 24) & 0xFF;
-                    
-                    // If background is transparent (alpha >= 127), trim all transparent pixels
-                    // If background has color, trim pixels matching that exact color+alpha
-                    if ($backgroundAlpha >= 127) {
-                        // Background is transparent - include any non-transparent pixel
-                        if ($pixelAlpha < 127) {
-                            $shouldInclude = true;
-                        }
-                    } else {
-                        // Background has color - include pixels that differ in color OR alpha
-                        // Compare full 32-bit value to account for both RGB and alpha
-                        if ($pixelColor != $backgroundColor) {
-                            $shouldInclude = true;
-                        }
+                    // For images with alpha channel, do exact RGBA matching
+                    // Include pixel only if it differs from the background color (any component)
+                    if ($pixelColor != $backgroundColor) {
+                        $shouldInclude = true;
                     }
                 } else {
                     // For images without alpha, simple color comparison
