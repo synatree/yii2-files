@@ -158,10 +158,20 @@ class File extends ActiveRecord
     protected function generateThumbnail($width, $height, $format, $trim, $outputPath)
     {
         Yii::info('generateThumbnail() called - File ID: ' . $this->id . ', width: ' . ($width ?? 'null') . ', height: ' . ($height ?? 'null') . ', format: ' . $format . ', trim: ' . ($trim ? 'true' : 'false') . ', outputPath: ' . $outputPath);
+        Yii::info('generateThumbnail() - File mimetype: ' . $this->mimetype . ', isImage(): ' . ($this->isImage() ? 'true' : 'false') . ', filename_path: ' . $this->filename_path);
+        Yii::info('generateThumbnail() - VIPS loaded: ' . (extension_loaded('vips') ? 'true' : 'false') . ', GD loaded: ' . (extension_loaded('gd') ? 'true' : 'false'));
         
         try {
             // Use the existing inline logic but save to file instead of returning base64
             if ($this->isImage()) {
+                Yii::info('generateThumbnail() - File is an image, proceeding with thumbnail generation');
+                
+                // Skip SVG files - they can't be processed by VIPS or GD directly
+                if (strpos($this->mimetype, 'svg') !== false) {
+                    Yii::warning('generateThumbnail() - SVG files cannot be processed by VIPS/GD, skipping thumbnail generation for file ' . $this->id);
+                    return false;
+                }
+                
                 // Try to use VIPS if available
                 if (extension_loaded('vips')) {
                     Yii::info('VIPS extension is loaded, attempting to use VIPS for file ' . $this->id);
@@ -218,8 +228,9 @@ class File extends ActiveRecord
                     Yii::error('Neither VIPS nor GD extension is available for file ' . $this->id);
                 }
             } else {
-                Yii::error('File ' . $this->id . ' is not an image (mimetype: ' . $this->mimetype . ')');
+                Yii::error('File ' . $this->id . ' is not an image (mimetype: ' . $this->mimetype . ') - Skipping thumbnail generation');
             }
+            Yii::info('generateThumbnail() - Returning false (file is not an image or no image processor available)');
             return false;
         } catch (\Exception $e) {
             Yii::error('Failed to generate thumbnail: ' . $e->getMessage() . ' - File: ' . $this->filename_path . ' - Stack trace: ' . $e->getTraceAsString());
