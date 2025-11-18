@@ -109,6 +109,12 @@ class FileWebModule extends \yii\base\Module
      */
     public $skipChecksumIntegrity = false;
 
+    /**
+     * @var string The property name on the User identity model to use as the access token for file delete URLs.
+     * Defaults to 'apiKey' for backwards compatibility. Set to 'auth_key' or another property name if your User model uses a different property.
+     */
+    public $accessTokenProperty = 'apiKey';
+
     /** @var array The rules to be used in URL management. */
     public $urlRules = [
         'files/trash-bin' => 'files/file/trash-bin',
