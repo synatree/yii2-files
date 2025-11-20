@@ -102,10 +102,11 @@ class File extends ActiveRecord
         }
 
         // SVG files are scalable vector graphics - no need to generate thumbnails
-        // Return the original file URL directly
+        // Use inline() to return a base64 data URI so the browser can properly size it
+        // SVGs without explicit width/height attributes need to be embedded to display correctly
         if ($this->isSvg()) {
-            Yii::info('File ' . $this->id . ' is an SVG, returning downloadUrl() directly (SVG is scalable)');
-            return $this->downloadUrl(true); // true = raw URL
+            Yii::info('File ' . $this->id . ' is an SVG, returning inline() data URI (SVG is scalable)');
+            return $this->inline(null, null, '.svg', 'image/svg+xml', false); // No trimming/resizing for SVG
         }
 
         // Generate cache key based on file properties and parameters
