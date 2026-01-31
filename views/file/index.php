@@ -82,14 +82,14 @@ $this->params['breadcrumbs'][] = $this->title;
                     $owner = $model->created_by == Yii::$app->user->id;
                     if ($owner) {
                         if ($model->public) {
-                            return '<span class="fa fa-folder-open" aria-hidden="true"></span> '
+                            return '<span class="bi bi-folder2-open" aria-hidden="true"></span> '
                                 . Yii::t('files', 'File is public')
                                 . '.<br />'
                                 . Html::a(
                                     Yii::t('files', 'Make protected'),
                                     ['//files/file/protect', 'id' => $model->id]);
                         } else {
-                            return '<span class="fa fa-folder-close" aria-hidden="true"></span> '
+                            return '<span class="bi bi-folder2" aria-hidden="true"></span> '
                                 . Yii::t('files', 'File is protected')
                                 . '.<br />'
                                 . Html::a(
@@ -111,9 +111,9 @@ $this->params['breadcrumbs'][] = $this->title;
                     $owner = $model->created_by == Yii::$app->user->id;
                     $str = $model->position . '<br>';
                     if ($owner) {
-                        $str .= Html::a('<span class="fa fa-arrow-up" aria-hidden="true"></span>',
+                        $str .= Html::a('<span class="bi bi-arrow-up" aria-hidden="true"></span>',
                                 ['move', 'id' => $model->id, 'dir' => 'up']) . '&nbsp;';
-                        $str .= Html::a('<span class="fa fa-arrow-down" aria-hidden="true"></span>',
+                        $str .= Html::a('<span class="bi bi-arrow-down" aria-hidden="true"></span>',
                                 ['move', 'id' => $model->id, 'dir' => 'down']) . '&nbsp;';
                     }
                     return $str;
@@ -134,17 +134,17 @@ $this->params['breadcrumbs'][] = $this->title;
                     // The current implementation of the cropper does only work on Google Chrome (Webkit) based browsers
                     if ($model->isImage() && stripos($_SERVER['HTTP_USER_AGENT'], 'chrome') !== FALSE) {
                         $actions .= '<nobr>' . Html::a(
-                                '<span class="fa fa-scissors" aria-hidden="true"></span> ' . Yii::t('files', 'Crop Image'),
+                                '<span class="bi bi-scissors" aria-hidden="true"></span> ' . Yii::t('files', 'Crop Image'),
                                 ['//files/file/crop', 'id' => $model->slug]) . '</nobr><br>';
                     }
 
                     $actions .= $model->downloadLink() . '<br>';
                     $actions .= '<nobr>' . Html::a(
-                            '<span class="fa fa-wrench" aria-hidden="true"></span> ' . Yii::t('files', 'Properties'),
+                            '<span class="bi bi-wrench" aria-hidden="true"></span> ' . Yii::t('files', 'Properties'),
                             ['//files/file/view', 'id' => $model->slug]) . '</nobr><br>';
                     if ($owner && $model->isDeleteable()) {
                         $actions .= '<nobr>' . Html::a(
-                                '<span class="fa fa-remove" aria-hidden="true"></span> ' . Yii::t('files', 'Delete File'),
+                                '<span class="bi bi-trash" aria-hidden="true"></span> ' . Yii::t('files', 'Delete File'),
                                 ['//files/file/delete', 'id' => $model->slug], [
                                 'data-method' => 'POST',
                                 'data-confirm' => Yii::t('files', 'Are you Sure?'),

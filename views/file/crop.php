@@ -56,31 +56,31 @@ $crop_target_height = $module->crop_target_height;
                     <hr>
 
                     <a class="btn btn-primary btn-rotate-left" href="#" title="Rotate Left">
-                        <span class="fa fa-chevron-left"></span>
+                        <span class="bi bi-chevron-left"></span>
                     </a>
 
                     <a class="btn btn-primary btn-rotate-right" href="#" title="Rotate Right">
-                        <span class="fa fa-chevron-right"></span>
+                        <span class="bi bi-chevron-right"></span>
                     </a>
 
                     <a class="btn btn-primary btn-zoom-out" href="#" title="Zoom Out">
-                        <span class="fa fa-minus"></span>
+                        <span class="bi bi-dash"></span>
                     </a>
 
                     <a class="btn btn-primary btn-zoom-in" href="#" title="Zoom In">
-                        <span class="fa fa-plus"></span>
+                        <span class="bi bi-plus"></span>
                     </a>
 
                     <a class="btn btn-primary btn-zoom-reset" href="#" title="Reset">
-                        <span class="fa fa-off"></span>
+                        <span class="bi bi-arrow-counterclockwise"></span>
                     </a>
 
                     <a class="btn btn-primary btn-flip-horizontal" href="#" title="Flip horizontal">
-                        <span class="fa fa-resize-horizontal"></span>
+                        <span class="bi bi-symmetry-horizontal"></span>
                     </a>
 
                     <a class="btn btn-primary btn-flip-vertical" href="#" title="Flip Vertical">
-                        <span class="fa fa-resize-vertical"></span>
+                        <span class="bi bi-symmetry-vertical"></span>
                     </a>
 
                     <hr>
