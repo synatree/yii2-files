@@ -25,6 +25,11 @@ class FileWebModule extends \yii\base\Module
     public $userModelClass = 'app\models\User';
 
     /**
+     * @var string The attribute on the User model used to find users by username (e.g. for sharing) and for display in lists
+     */
+    public $userUsernameAttribute = 'username';
+
+    /**
      * @var string Url to upload files.
      */
     public $uploadUrl = ['/files/file/upload'];

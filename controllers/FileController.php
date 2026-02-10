@@ -2,7 +2,6 @@
 
 namespace thyseus\files\controllers;
 
-use app\models\User;
 use thyseus\files\events\FileUploadEvent;
 use thyseus\files\events\ShareWithUserEvent;
 use thyseus\files\FileWebModule;
@@ -275,10 +274,14 @@ class FileController extends Controller
      * Checks permission and downloads the requested file, if possible.
      * Set $raw to false to get the raw file content rather than a download.
      * Increments the download_count of the requested file by one, if valid.
-     * @param string $thumbnail Optional thumbnail cache key to serve a cached thumbnail instead
+     * @param string $id File slug/id
+     * @param bool $raw Serve as raw content instead of download
+     * @param string|null $thumbnail Optional thumbnail cache key to serve a cached thumbnail instead
+     * @param int|null $maxWidth Optional max width to serve a thumbnail (image only)
+     * @param int|null $maxHeight Optional max height to serve a thumbnail (image only)
      * @return mixed
      */
-    public function actionDownload(string $id, bool $raw = false, ?string $thumbnail = null)
+    public function actionDownload(string $id, bool $raw = false, ?string $thumbnail = null, ?int $maxWidth = null, ?int $maxHeight = null)
     {
         $model = $this->findModel($id);
 
@@ -291,7 +294,30 @@ class FileController extends Controller
             throw new ForbiddenHttpException;
         }
 
-        // Handle thumbnail requests
+        // Handle thumbnail by max dimensions: request thumbnail from model and serve it
+        if ($maxWidth !== null || $maxHeight !== null) {
+            if ($model->isImage() && !$model->isSvg()) {
+                $thumbnailPath = $model->getThumbnailPath($maxWidth, $maxHeight);
+                if ($thumbnailPath !== null && file_exists($thumbnailPath)) {
+                    $ext = pathinfo($thumbnailPath, PATHINFO_EXTENSION);
+                    $mimeType = $model->mimetype;
+                    if ($ext === 'png') {
+                        $mimeType = 'image/png';
+                    } elseif ($ext === 'jpg' || $ext === 'jpeg') {
+                        $mimeType = 'image/jpeg';
+                    } elseif ($ext === 'webp') {
+                        $mimeType = 'image/webp';
+                    }
+                    return Yii::$app->response->sendFile($thumbnailPath, basename($thumbnailPath), [
+                        'mimeType' => $mimeType,
+                        'inline' => true,
+                    ]);
+                }
+            }
+            // Non-image or SVG or generation failed: fall through to normal download
+        }
+
+        // Handle thumbnail requests by cache key
         if ($thumbnail) {
             $uploadPath = Yii::$app->getModule('files')->uploadPath;
             // Resolve alias if needed
@@ -531,14 +557,19 @@ class FileController extends Controller
      */
     public function determineShareableUsers()
     {
-        if (is_callable(FileWebModule::getInstance()->shareableUsersCallback)) {
-            return call_user_func(FileWebModule::getInstance()->shareableUsersCallback);
-        } else {
-            return ArrayHelper::map(
-                \app\Models\User::find()
-                    ->where(['!=', 'id', Yii::$app->user->id])
-                    ->all(), 'username', 'username');
+        $module = FileWebModule::getInstance();
+        if (is_callable($module->shareableUsersCallback)) {
+            return call_user_func($module->shareableUsersCallback);
         }
+        $userClass = $module->userModelClass;
+        $usernameAttr = $module->userUsernameAttribute ?? 'username';
+        return ArrayHelper::map(
+            $userClass::find()
+                ->where(['!=', 'id', Yii::$app->user->id])
+                ->all(),
+            $usernameAttr,
+            $usernameAttr
+        );
     }
 
     /**
@@ -566,7 +597,10 @@ class FileController extends Controller
             $username = $post['username'];
         }
 
-        $recipient = User::find()->where(['username' => $username])->one();
+        $module = FileWebModule::getInstance();
+        $userClass = $module->userModelClass;
+        $usernameAttr = $module->userUsernameAttribute ?? 'username';
+        $recipient = $userClass::find()->where([$usernameAttr => $username])->one();
 
         if (!$recipient) {
             throw new NotFoundHttpException(Yii::t('files', 'User can not be found'));

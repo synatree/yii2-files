@@ -5,7 +5,6 @@ namespace thyseus\files\models;
 use thyseus\files\models\File;
 use Yii;
 use yii\data\ActiveDataProvider;
-use app\models\User;
 
 /**
  * FilsSearch represents the model behind the search form about `app\models\File`.
@@ -99,15 +98,16 @@ class FileSearch extends File
             $user_id = Yii::$app->user->id;
         }
 
+        $userClass = Yii::$app->getModule('files')->userModelClass;
+        $usernameAttr = Yii::$app->getModule('files')->userUsernameAttribute ?? 'username';
         foreach (File::find()
                      ->select('created_by')
                      ->where($user_id == -1 ? [] : ['created_by' => $user_id])
                      ->groupBy('created_by')
                      ->all() as $file) {
-            if ($user = User::findOne($file->created_by)) {
-                $uploadedBy[$file->created_by] = $user->username;
+            if ($user = $userClass::findOne($file->created_by)) {
+                $uploadedBy[$file->created_by] = $user->$usernameAttr;
             }
-
         }
 
         return $uploadedBy;
