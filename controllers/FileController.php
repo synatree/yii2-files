@@ -282,6 +282,11 @@ class FileController extends Controller
     {
         $model = $this->findModel($id);
 
+        // Do not serve trashed or permanently deleted files (e.g. after "delete" in upload widget)
+        if ($model->status !== File::STATUS_NORMAL) {
+            throw new NotFoundHttpException(Yii::t('files', 'The requested file does not exist.'));
+        }
+
         if (!$this->checkAccessPermission($model)) {
             throw new ForbiddenHttpException;
         }
@@ -382,12 +387,36 @@ class FileController extends Controller
             return json_encode(['error' => Yii::t('files', 'No files found for upload.')]);
         }
 
-        $files = $_FILES['files'];
+        // Normalize: handle both single file (scalar name/type/...) and files[] (array) structure from FormData
+        $fileList = [];
+        $raw = $_FILES['files'];
+        if (isset($raw['name'])) {
+            if (is_array($raw['name'])) {
+                foreach (array_keys($raw['name']) as $idx) {
+                    $fileList[] = [
+                        'name' => $raw['name'][$idx],
+                        'type' => $raw['type'][$idx] ?? '',
+                        'tmp_name' => $raw['tmp_name'][$idx] ?? '',
+                        'error' => $raw['error'][$idx] ?? UPLOAD_ERR_NO_FILE,
+                        'size' => $raw['size'][$idx] ?? 0,
+                    ];
+                }
+            } else {
+                $fileList[] = [
+                    'name' => $raw['name'],
+                    'type' => $raw['type'] ?? '',
+                    'tmp_name' => $raw['tmp_name'] ?? '',
+                    'error' => $raw['error'] ?? UPLOAD_ERR_NO_FILE,
+                    'size' => $raw['size'] ?? 0,
+                ];
+            }
+        }
+
         $success = false;
         $paths = [];
         $fileModels = [];
 
-        foreach ($_FILES as $i => $file) {
+        foreach ($fileList as $file) {
             if ($file['error'] == UPLOAD_ERR_OK) {
                 $ext = explode('.', basename($file['name']));
                 $target = FileWebModule::getInstance()->uploadPath . '/' . md5(uniqid()) . "." . array_pop($ext);

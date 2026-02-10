@@ -155,6 +155,27 @@ class File extends ActiveRecord
     }
 
     /**
+     * Check whether a thumbnail filename (e.g. from download URL) belongs to this file.
+     * Used to avoid serving a cached thumbnail from a different file (e.g. after delete + reattach).
+     *
+     * @param string $thumbnailBasename Thumbnail filename (e.g. "abc123.png")
+     * @return bool True if the thumbnail was generated for this file's id+checksum
+     */
+    public function isThumbnailKeyForThisFile($thumbnailBasename)
+    {
+        $format = pathinfo($thumbnailBasename, PATHINFO_EXTENSION);
+        $ext = $format ? '.' . $format : '.png';
+        $hashPart = substr($thumbnailBasename, 0, strlen($thumbnailBasename) - strlen($ext));
+        if (strlen($hashPart) !== 32) {
+            return false;
+        }
+        // Match default params: (null, null, $ext, false) and (null, null, $ext, true) as used by thumbnailUrl()
+        $keyNotrim = md5($this->id . '_' . $this->checksum . '_auto_auto_' . $ext . '_notrim');
+        $keyTrim = md5($this->id . '_' . $this->checksum . '_auto_auto_' . $ext . '_trim');
+        return $hashPart === $keyNotrim || $hashPart === $keyTrim;
+    }
+
+    /**
      * Generate and save a thumbnail to the specified path
      * @param int|null $width Target width
      * @param int|null $height Target height
