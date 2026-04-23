@@ -2,7 +2,8 @@
 
 namespace thyseus\files\console;
 
-use Yii;
+
+use \Yii;
 use yii\console\Controller;
 use yii\console\ExitCode;
 use thyseus\files\models\File;

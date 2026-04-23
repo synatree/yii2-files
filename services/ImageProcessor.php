@@ -2,8 +2,9 @@
 
 namespace thyseus\files\services;
 
-use Yii;
 
+
+use \Yii;
 /**
  * Handles image thumbnailing, trimming and inline data URI generation.
  * Uses VIPS when available, falls back to GD.

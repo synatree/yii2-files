@@ -1,8 +1,9 @@
 <?php
 namespace thyseus\files\behaviors;
 
+
+use \Yii;
 use thyseus\files\models\File;
-use Yii;
 use yii\base\Behavior;
 
 class HasFilesBehavior extends Behavior

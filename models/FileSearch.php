@@ -2,8 +2,9 @@
 
 namespace thyseus\files\models;
 
+
+use \Yii;
 use thyseus\files\models\File;
-use Yii;
 use yii\data\ActiveDataProvider;
 
 /**

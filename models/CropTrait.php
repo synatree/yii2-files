@@ -1,7 +1,6 @@
 <?php
 
 namespace thyseus\files\models;
-use Yii;
 use thyseus\files\FileWebModule;
 /**
  * Trait CropTrait

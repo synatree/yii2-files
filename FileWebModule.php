@@ -2,7 +2,8 @@
 
 namespace thyseus\files;
 
-use Yii;
+
+use \Yii;
 use yii\i18n\PhpMessageSource;
 
 /**

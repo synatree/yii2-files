@@ -2,6 +2,8 @@
 
 namespace thyseus\files\events;
 
+
+use \Yii;
 use thyseus\files\models\File;
 use yii\base\Event;
 

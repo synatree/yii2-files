@@ -2,8 +2,9 @@
 
 namespace thyseus\files\models;
 
+
+use \Yii;
 use thyseus\files\events\ShareWithUserEvent;
-use Yii;
 use yii\web\NotFoundHttpException;
 use yii\behaviors\BlameableBehavior;
 use yii\behaviors\SluggableBehavior;

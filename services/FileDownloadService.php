@@ -2,8 +2,9 @@
 
 namespace thyseus\files\services;
 
+
+use \Yii;
 use thyseus\files\models\File;
-use Yii;
 use yii\httpclient\Client;
 use yii\httpclient\FormatterInterface;
 use yii\httpclient\ParserInterface;

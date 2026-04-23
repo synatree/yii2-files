@@ -2,12 +2,13 @@
 
 namespace thyseus\files\controllers;
 
+
+use \Yii;
 use thyseus\files\events\FileUploadEvent;
 use thyseus\files\events\ShareWithUserEvent;
 use thyseus\files\FileWebModule;
 use thyseus\files\models\File;
 use thyseus\files\models\FileSearch;
-use Yii;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\helpers\ArrayHelper;
