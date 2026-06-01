@@ -14,6 +14,7 @@ use yii\helpers\FileHelper;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use thyseus\files\FileWebModule;
+use thyseus\files\services\DocumentPreviewService;
 use thyseus\files\services\ImageProcessor;
 
 /**
@@ -235,6 +236,75 @@ class File extends ActiveRecord
     public function isImage()
     {
         return strpos($this->mimetype, 'image') !== false;
+    }
+
+    public function isPdf()
+    {
+        if ($this->mimetype === 'application/pdf') {
+            return true;
+        }
+
+        $name = strtolower((string) $this->filename_user);
+
+        return $name !== '' && substr($name, -4) === '.pdf';
+    }
+
+    /**
+     * Whether the file binary exists on disk and can be read.
+     */
+    public function hasReadableBinary(): bool
+    {
+        $path = $this->filename_path;
+
+        return $path !== null && $path !== '' && is_file($path) && is_readable($path);
+    }
+
+    /**
+     * Whether a preview thumbnail can be generated or served.
+     */
+    public function isPreviewable(): bool
+    {
+        if (!$this->hasReadableBinary()) {
+            return false;
+        }
+
+        return ($this->isImage() && !$this->isSvg()) || $this->isPdf();
+    }
+
+    /**
+     * URL to a cached preview image (raster image thumbnail or PDF first page).
+     */
+    public function previewUrl(?int $maxWidth = null, ?int $maxHeight = null): string
+    {
+        $params = [
+            '//files/file/download',
+            'id' => $this->slug,
+            'preview' => 1,
+        ];
+        if ($maxWidth !== null) {
+            $params['maxWidth'] = $maxWidth;
+        }
+        if ($maxHeight !== null) {
+            $params['maxHeight'] = $maxHeight;
+        }
+
+        return self::absUrl($params);
+    }
+
+    /**
+     * Filesystem path to preview image, generating on demand.
+     */
+    public function getDocumentPreviewPath(?int $maxWidth = null, ?int $maxHeight = null, string $format = '.png'): ?string
+    {
+        return (new DocumentPreviewService())->getPreviewPath($this, $maxWidth, $maxHeight, $format);
+    }
+
+    /**
+     * Check whether a preview cache filename belongs to this file.
+     */
+    public function isPreviewKeyForThisFile(string $previewBasename): bool
+    {
+        return (new DocumentPreviewService())->isPreviewKeyForFile($this, $previewBasename);
     }
 
     /**

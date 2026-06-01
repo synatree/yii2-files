@@ -116,6 +116,18 @@ class FileWebModule extends \yii\base\Module
     public $skipChecksumIntegrity = false;
 
     /**
+     * @var string|null Full path to pdftoppm binary for PDF preview thumbnails.
+     * When null, auto-detect via PATH, POPPLER_PATH env, popplerPath, and common install locations.
+     */
+    public $pdftoppmPath = null;
+
+    /**
+     * @var string|null Poppler install root (e.g. C:\poppler-26.02.0 or /usr).
+     * Resolved to Library/bin/pdftoppm(.exe) on Windows or bin/pdftoppm on Linux.
+     */
+    public $popplerPath = null;
+
+    /**
      * @var string The property name on the User identity model to use as the access token for file delete URLs.
      * Defaults to 'apiKey' for backwards compatibility. Set to 'auth_key' or another property name if your User model uses a different property.
      */

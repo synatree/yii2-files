@@ -280,10 +280,19 @@ class FileController extends Controller
      * @param string|null $thumbnail Optional thumbnail cache key to serve a cached thumbnail instead
      * @param int|null $maxWidth Optional max width to serve a thumbnail (image only)
      * @param int|null $maxHeight Optional max height to serve a thumbnail (image only)
+     * @param bool $preview When true, serve a cached preview image (image thumb or PDF page 1)
+     * @param bool $inline When true, serve full file inline (PDF/images in browser)
      * @return mixed
      */
-    public function actionDownload(string $id, bool $raw = false, ?string $thumbnail = null, ?int $maxWidth = null, ?int $maxHeight = null)
-    {
+    public function actionDownload(
+        string $id,
+        bool $raw = false,
+        ?string $thumbnail = null,
+        ?int $maxWidth = null,
+        ?int $maxHeight = null,
+        bool $preview = false,
+        bool $inline = false
+    ) {
         $model = $this->findModel($id);
 
         // Do not serve trashed or permanently deleted files (e.g. after "delete" in upload widget)
@@ -293,6 +302,17 @@ class FileController extends Controller
 
         if (!$this->checkAccessPermission($model)) {
             throw new ForbiddenHttpException;
+        }
+
+        if ($preview && ($maxWidth !== null || $maxHeight !== null)) {
+            $previewPath = $model->getDocumentPreviewPath($maxWidth, $maxHeight);
+            if ($previewPath !== null && file_exists($previewPath)) {
+                return Yii::$app->response->sendFile($previewPath, basename($previewPath), [
+                    'mimeType' => 'image/png',
+                    'inline' => true,
+                ]);
+            }
+            throw new NotFoundHttpException('Preview not available');
         }
 
         // Handle thumbnail by max dimensions: request thumbnail from model and serve it
@@ -349,19 +369,19 @@ class FileController extends Controller
             }
         }
 
+        if (!$model->hasReadableBinary()) {
+            throw new NotFoundHttpException;
+        }
+
         if (!$model->proofChecksum()) {
             throw new NotFoundHttpException(Yii::t('files',
                 'Error: failed checksum check. The file or checksum has been changed after upload. File integrity can note be ensured. Download aborted. Please contact the System Administrator.'));
         }
 
-        if (!file_exists($model->filename_path)) {
-            throw new NotFoundHttpException;
-        }
-
         $model->updateCounters(['download_count' => 1]);
         $options = [
             'mimeType' => $model->mimetype,
-            'inline' => $model->isImage(),
+            'inline' => $inline || $model->isImage(),
         ];
         if ($raw) {
             return Yii::$app->response->sendContentAsFile(file_get_contents($model->filename_path), $model->filename_user, $options);
