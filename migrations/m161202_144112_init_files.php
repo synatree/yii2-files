@@ -13,7 +13,7 @@ class m161202_144112_init_files extends Migration
         $tableOptions = '';
 
         if (Yii::$app->db->driverName == 'mysql')
-            $tableOptions = 'CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE=InnoDB';
+            $tableOptions = 'CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE=InnoDB';
 
         $this->createTable('{{%files}}', [
             'id'                   => Schema::TYPE_PK,
