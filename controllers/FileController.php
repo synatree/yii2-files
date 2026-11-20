@@ -8,13 +8,13 @@ use thyseus\files\events\FileUploadEvent;
 use thyseus\files\events\ShareWithUserEvent;
 use thyseus\files\FileWebModule;
 use thyseus\files\models\File;
-use thyseus\files\models\FileSearch;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use yii\helpers\ArrayHelper;
 use yii\web\BadRequestHttpException;
 use yii\web\Controller;
 use yii\web\ForbiddenHttpException;
+use yii\web\MethodNotAllowedHttpException;
 use yii\web\NotFoundHttpException;
 
 /**
@@ -72,6 +72,7 @@ class FileController extends Controller
             'verbs' => [
                 'class' => VerbFilter::class,
                 'actions' => [
+                    'upload' => ['POST'],
                     'share_with_user' => ['POST'],
                 ],
             ],
@@ -138,38 +139,19 @@ class FileController extends Controller
     }
 
     /**
-     * Lists all Files of the currently logged in user.
-     * @return mixed
+     * Legacy HTML file list (removed). Use application UI or API instead.
      */
     public function actionIndex()
     {
-        $searchModel = new FileSearch();
-        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
-
-        Yii::$app->user->setReturnUrl(['//files/file/index']);
-
-        return $this->render('index', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
-        ]);
+        throw new NotFoundHttpException();
     }
 
     /**
-     * Shows all Files that are in the trash bin.
-     * @return mixed
+     * Legacy trash bin view (removed). Use application UI or API instead.
      */
     public function actionTrashBin()
     {
-        $searchModel = new FileSearch();
-        $searchModel->trash = true;
-        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
-
-        Yii::$app->user->setReturnUrl(['//files/file/trash-bin']);
-
-        return $this->render('trash', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
-        ]);
+        throw new NotFoundHttpException();
     }
 
     /**
@@ -416,16 +398,16 @@ class FileController extends Controller
     }
 
     /**
-     * When called via GET request, this will render the file upload form.
-     * When called via POST request, this is the endpoint to receive an uploaded file.
-     * @var $public boolean Should the uploaded file be marked as public? Defaults to false.
-     * @var $tags string Comma separated list of tags that the uploaded file should be tagged with.
-     * @return mixed
+     * POST endpoint to receive uploaded file(s). Upload UI is provided by the host app (e.g. React).
+     *
+     * @param bool $public Should the uploaded file be marked as public? Defaults to false.
+     * @param string $tags Comma separated list of tags for the uploaded file.
+     * @return string JSON-encoded upload result
      */
     public function actionUpload($public = false, $tags = '')
     {
-        if (Yii::$app->request->isGet) {
-            return $this->render('upload');
+        if (!Yii::$app->request->isPost) {
+            throw new MethodNotAllowedHttpException();
         }
 
         $this->trigger(self::EVENT_BEFORE_UPLOAD);
@@ -543,33 +525,11 @@ class FileController extends Controller
     }
 
     /**
-     * Displays a single File model.
-     * @param string $id
-     * @param string $language
-     * @return mixed
+     * Legacy file detail view (removed). Use download API or application UI instead.
      */
     public function actionView($id)
     {
-        $file = $this->findModel($id);
-
-        if (!$this->checkAccessPermission($file)) {
-            throw new ForbiddenHttpException;
-        }
-
-        if (Yii::$app->request->post()) {
-            if ($file->load(Yii::$app->request->post()) && $file->save()) {
-                Yii::$app->getSession()->setFlash('success',
-                    Yii::t('files', 'Tags have been updated'));
-                $file->refresh();
-            }
-        }
-
-        Yii::$app->user->setReturnUrl(['//files/file/view', 'id' => $id]);
-
-        return $this->render('view', [
-            'model' => $file,
-            'users' => $this->determineShareableUsers(),
-        ]);
+        throw new NotFoundHttpException();
     }
 
     /**

@@ -5,15 +5,14 @@ A General File Upload Manager for the Yii 2 framework.
 Files can be uploaded and linked to any ActiveRecord Model. Since version 0.3.0 the user
 can upload files without the need to link to an Model.
  
-It uses the kartik-v/yii2-widget-fileinput widget (https://github.com/kartik-v/yii2-widget-fileinput).
+Uploads are handled by `FileController::actionUpload` (POST, multipart `files` field). The host
+application provides the upload UI (for example Falcon React file attachments); this package does
+not ship Kartik FileInput views.
 
 It contains only one database table 'files' where everything is stored.
 
 A simple Access Control is provided. All Files are uploaded into an protected folder by default and can
 be set to public for everyone or for specific users by the uploader.
-
-The upload endpoint has been designed with this document in mind:
-http://webtips.krajee.com/ajax-based-file-uploads-using-fileinput-plugin/
 
 In case images are uploaded, a simple image cropper is provided.
 
@@ -97,18 +96,9 @@ logged in user via:
 $model->files;
 ```
 
-You can render an upload widget that attaches every uploaded file automatically to the model by using:
-
-```php
-use yii\helpers\Url;
-
-echo $this->render('@vendor/thyseus/yii2-files/views/file/_upload', [
-    'model' => $model,
-    'options' => ['multiple' => true], // optional
-    'target_url' => Url::to(['agency/view', 'id' => $model->slug]), // optional
-    'uploadExtraData' => ['public' => true] // uploaded files are automatically public (default is: protected). optional.
-]);
-```
+Post files to the upload endpoint from your UI (for example `multipart/form-data` with a `files`
+field). Include optional POST fields such as `model`, `target_id`, `target_url`, `public`, and
+`allowed_mime_types` as needed. The response is JSON with `fileModels` on success.
 
 Use
 ```php
@@ -140,11 +130,10 @@ Event::on(FileController::class, FileController::EVENT_AFTER_SHARE_WITH_USER, fu
 
 You can use the following routes to access the files module:
 
-* list all files of the current logged in user: https://your-domain/files/files/index
-* view: https://your-domain/files/files/view?id=<id>
-* update: 'files/update/<id>' => 'files/files/update',
-* delete: 'files/delete/<id>' => 'files/files/delete',
-* view: 'files/<id>' => 'files/files/view',
+* upload (POST): `files/file/upload`
+* download: `files/file/download?id=<id>`
+* delete: `files/file/delete?id=<id>`
+* crop: `files/file/crop?id=<id>`
 
 ## License
 

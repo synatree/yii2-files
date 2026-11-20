@@ -16,7 +16,7 @@ class FileUploadEvent extends Event {
     /**
      * @var array Extra post data that has been given with the request. Contains the Yii::$app->request->post() array as
      * it is.
-     * @see http://demos.krajee.com/widget-details/fileinput#advanced-usage
+     * @see FileController::actionUpload() for POST fields accepted on upload.
      */
     public $postData;
 
